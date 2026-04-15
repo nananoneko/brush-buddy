@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>BrushBuddy - 刷牙监督</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f0f1a;
+  --card: #1a1a2e;
+  --primary: #4fc3f7;
+  --accent: #7c4dff;
+  --success: #66bb6a;
+  --warning: #ffa726;
+  --danger: #ef5350;
+  --text: #e0e0e0;
+  --text-dim: #888;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Navigation */
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--card);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav button {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+.nav button.active {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Pages */
+.page { display: none; padding: 20px; max-width: 420px; margin: 0 auto; }
+.page.active { display: block; }
+
+/* Timer Page */
+.timer-page { text-align: center; }
+
+.tooth-container {
+  position: relative;
+  width: 200px;
+  height: 240px;
+  margin: 20px auto;
+}
+
+.tooth-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(79, 195, 247, 0.3));
+  transition: filter 0.5s;
+}
+
+.tooth-face {
+  transition: all 0.3s;
+}
+
+/* Zone indicator */
+.zone-map {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px auto;
+  max-width: 280px;
+}
+.zone-cell {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.08);
+  font-size: 13px;
+  transition: all 0.4s;
+  position: relative;
+  overflow: hidden;
+}
+.zone-cell.active {
+  border-color: var(--primary);
+  background: rgba(79, 195, 247, 0.1);
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.2);
+}
+.zone-cell.done {
+  border-color: var(--success);
+  background: rgba(102, 187, 106, 0.1);
+}
+.zone-cell .zone-name { font-weight: 600; margin-bottom: 4px; }
+.zone-cell .zone-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.zone-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--primary);
+  transition: width 0.1s linear;
+}
+.zone-cell.done .zone-progress { background: var(--success); }
+
+/* Main timer */
+.main-timer {
+  font-size: 64px;
+  font-weight: 200;
+  letter-spacing: 4px;
+  margin: 20px 0;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.timer-label {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 20px 0;
+}
+.btn {
+  border: none;
+  border-radius: 50px;
+  padding: 14px 36px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-start {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3);
+}
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(79, 195, 247, 0.4); }
+.btn-stop {
+  background: rgba(239, 83, 80, 0.15);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-small {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-dim);
+  padding: 10px 20px;
+  font-size: 13px;
+}
+
+/* Music selector */
+.music-selector {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.music-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  padding: 6px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+.music-btn.active {
+  background: rgba(124, 77, 255, 0.2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Volume control */
+.volume-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.volume-control input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent);
+}
+.volume-label { font-size: 12px; color: var(--text-dim); }
+
+/* Completion screen */
+.completion {
+  display: none;
+  text-align: center;
+  padding: 40px 20px;
+  animation: fadeIn 0.5s;
+}
+.completion.show { display: block; }
+.completion h2 {
+  font-size: 28px;
+  margin: 20px 0 8px;
+  background: linear-gradient(135deg, var(--success), var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.completion p { color: var(--text-dim); margin: 8px 0; }
+.streak-display {
+  font-size: 48px;
+  font-weight: 700;
+  margin: 16px 0;
+  color: var(--warning);
+}
+
+/* Calendar Page */
+.calendar-page h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 300;
+}
+.cal-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.cal-nav button {
+  background: rgba(255,255,255,0.05);
+  border: none;
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cal-nav span { font-size: 16px; font-weight: 500; }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-header {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 0;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  position: relative;
+}
+.cal-day.empty { background: transparent; }
+.cal-day.checked {
+  background: rgba(102, 187, 106, 0.2);
+  color: var(--success);
+  font-weight: 600;
+}
+.cal-day.checked::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  background: var(--success);
+  border-radius: 50%;
+}
+.cal-day.today {
+  border: 1px solid var(--primary);
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+/* Character Page */
+.character-page { text-align: center; }
+.char-display {
+  margin: 30px auto;
+  position: relative;
+}
+.char-name {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 16px 0 4px;
+}
+.char-title {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+.char-stats {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.char-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+}
+.char-stat-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  margin-left: 12px;
+  overflow: hidden;
+}
+.char-stat-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
+.level-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+@keyframes sparkle {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+.brushing .tooth-svg { animation: pulse 1s infinite; }
+
+/* Sparkles */
+.sparkle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: sparkle 0.8s infinite;
+  pointer-events: none;
+}
+
+/* Responsive */
+@media (max-width: 380px) {
+  .main-timer { font-size: 48px; }
+  .zone-cell { padding: 8px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="active" onclick="showPage('timer')">刷牙</button>
+  <button onclick="showPage('calendar')">打卡</button>
+  <button onclick="showPage('character')">牙宝</button>
+</nav>
+
+<!-- Timer Page -->
+<div id="page-timer" class="page timer-page active">
+  <div class="tooth-container" id="toothContainer">
+    <svg class="tooth-svg" id="toothSvg" viewBox="0 0 200 240">
+      <!-- Tooth body -->
+      <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
+            fill="#f5f5f5" stroke="#e0e0e0" stroke-width="2" id="toothBody"/>
+      <!-- Zone highlights -->
+      <path d="M70 60 Q70 35 100 35 Q100 80 70 80 Z" fill="transparent" id="zone-ul" opacity="0.4"/>
+      <path d="M100 35 Q130 35 130 60 L130 80 Q100 80 100 35 Z" fill="transparent" id="zone-ur" opacity="0.4"/>
+      <path d="M65 100 Q65 80 100 80 L100 140 Q65 140 65 100 Z" fill="transparent" id="zone-ll" opacity="0.4"/>
+      <path d="M100 80 Q135 80 135 100 L135 140 Q100 140 100 80 Z" fill="transparent" id="zone-lr" opacity="0.4"/>
+      <!-- Face -->
+      <g class="tooth-face" id="toothFace">
+        <!-- Eyes -->
+        <ellipse cx="85" cy="85" rx="5" ry="6" fill="#333" id="eyeL"/>
+        <ellipse cx="115" cy="85" rx="5" ry="6" fill="#333" id="eyeR"/>
+        <!-- Mouth -->
+        <path d="M88 105 Q100 118 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round" id="mouth"/>
+        <!-- Blush -->
+        <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="blushL"/>
+        <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="blushR"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="main-timer" id="mainTimer">2:00</div>
+  <div class="timer-label" id="timerLabel">准备好了吗？</div>
+
+  <div class="zone-map" id="zoneMap">
+    <div class="zone-cell" id="zoneCell-0">
+      <div class="zone-name">左上</div>
+      <div class="zone-time" id="zoneTime-0">0:30</div>
+      <div class="zone-progress" id="zoneProgress-0"></div>
+    </div>
+    <div class="zone-cell" id="zoneCell-1">
+      <div class="zone-name">右上</div>
+      <div class="zone-time" id="zoneTime-1">0:30</div>
+      <div class="zone-progress" id="zoneProgress-1"></div>
+    </div>
+    <div class="zone-cell" id="zoneCell-2">
+      <div class="zone-name">左下</div>
+      <div class="zone-time" id="zoneTime-2">0:30</div>
+      <div class="zone-progress" id="zoneProgress-2"></div>
+    </div>
+    <div class="zone-cell" id="zoneCell-3">
+      <div class="zone-name">右下</div>
+      <div class="zone-time" id="zoneTime-3">0:30</div>
+      <div class="zone-progress" id="zoneProgress-3"></div>
+    </div>
+  </div>
+
+  <div class="music-selector">
+    <button class="music-btn active" data-music="edm">电子节拍</button>
+    <button class="music-btn" data-music="funk">放克律动</button>
+    <button class="music-btn" data-music="hiphop">嘻哈鼓点</button>
+    <button class="music-btn" data-music="arcade">8-bit游戏</button>
+    <button class="music-btn" data-music="none">静音</button>
+  </div>
+
+  <div class="volume-control">
+    <span class="volume-label">音量</span>
+    <input type="range" id="volumeSlider" min="0" max="100" value="50">
+  </div>
+
+  <div class="controls" id="controls">
+    <button class="btn btn-start" id="btnStart" onclick="startBrushing()">开始刷牙</button>
+  </div>
+
+  <div class="completion" id="completion">
+    <svg width="120" height="140" viewBox="0 0 200 240" id="completionTooth">
+      <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
+            fill="#fff" stroke="#e0e0e0" stroke-width="2"/>
+      <ellipse cx="85" cy="85" rx="5" ry="4" fill="#333"/>
+      <ellipse cx="115" cy="85" rx="5" ry="4" fill="#333"/>
+      <path d="M85 105 Q100 122 115 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.4)"/>
+      <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.4)"/>
+      <!-- sparkle -->
+      <text x="140" y="50" font-size="20" fill="#FFD700">&#10022;</text>
+      <text x="50" y="55" font-size="16" fill="#FFD700">&#10022;</text>
+    </svg>
+    <h2>刷牙完成！</h2>
+    <p id="completionMsg">牙齿亮晶晶~</p>
+    <div class="streak-display" id="streakDisplay"></div>
+    <p style="font-size: 12px; color: var(--text-dim);">连续打卡天数</p>
+    <button class="btn btn-start" style="margin-top: 20px;" onclick="resetTimer()">返回</button>
+  </div>
+</div>
+
+<!-- Calendar Page -->
+<div id="page-calendar" class="page calendar-page">
+  <h2>刷牙日历</h2>
+  <div class="cal-nav">
+    <button onclick="changeMonth(-1)">&lt; 上月</button>
+    <span id="calTitle"></span>
+    <button onclick="changeMonth(1)">下月 &gt;</button>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statStreak">0</div>
+      <div class="stat-label">连续天数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statMonth">0</div>
+      <div class="stat-label">本月次数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">总计次数</div>
+    </div>
+  </div>
+</div>
+
+<!-- Character Page -->
+<div id="page-character" class="page character-page">
+  <div class="char-display">
+    <svg width="160" height="192" viewBox="0 0 200 240" id="charTooth">
+      <defs>
+        <linearGradient id="toothGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" id="gradStop1" stop-color="#f5f5f5"/>
+          <stop offset="100%" id="gradStop2" stop-color="#e0e0e0"/>
+        </linearGradient>
+      </defs>
+      <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
+            fill="url(#toothGrad)" stroke="#ccc" stroke-width="2"/>
+      <ellipse cx="85" cy="85" rx="5" ry="6" fill="#333" id="charEyeL"/>
+      <ellipse cx="115" cy="85" rx="5" ry="6" fill="#333" id="charEyeR"/>
+      <path d="M88 105 Q100 118 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round" id="charMouth"/>
+      <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushL"/>
+      <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushR"/>
+    </svg>
+  </div>
+  <div class="char-name" id="charName">小白牙</div>
+  <div class="char-title" id="charTitle">刚刚起步</div>
+  <div class="level-badge" id="levelBadge" style="background: rgba(255,255,255,0.1);">Lv.1 新手</div>
+
+  <div class="char-stats">
+    <div class="char-stat-row">
+      <span>洁白度</span>
+      <div class="char-stat-bar">
+        <div class="char-stat-fill" id="statWhiteness" style="width: 10%; background: linear-gradient(90deg, #fff, #e0e0e0);"></div>
+      </div>
+    </div>
+    <div class="char-stat-row">
+      <span>健康值</span>
+      <div class="char-stat-bar">
+        <div class="char-stat-fill" id="statHealth" style="width: 10%; background: linear-gradient(90deg, var(--success), #81c784);"></div>
+      </div>
+    </div>
+    <div class="char-stat-row">
+      <span>坚持力</span>
+      <div class="char-stat-bar">
+        <div class="char-stat-fill" id="statPersist" style="width: 10%; background: linear-gradient(90deg, var(--accent), #9c27b0);"></div>
+      </div>
+    </div>
+    <div class="char-stat-row">
+      <span>闪亮度</span>
+      <div class="char-stat-bar">
+        <div class="char-stat-fill" id="statShine" style="width: 10%; background: linear-gradient(90deg, #ffd54f, #ff8f00);"></div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size: 13px; color: var(--text-dim); margin-top: 16px;" id="charTip">
+    每天刷牙，让牙宝变得更强大！
+  </p>
+</div>
+
+<script>
+// ============ DATA ============
+const ZONE_NAMES = ['左上', '右上', '左下', '右下'];
+const ZONE_IDS = ['zone-ul', 'zone-ur', 'zone-ll', 'zone-lr'];
+const ZONE_SECONDS = 30;
+const TOTAL_SECONDS = ZONE_SECONDS * 4;
+
+let state = {
+  running: false,
+  currentZone: 0,
+  zoneTimeLeft: ZONE_SECONDS,
+  totalTimeLeft: TOTAL_SECONDS,
+  interval: null,
+  audioCtx: null,
+  musicType: 'edm',
+  volume: 0.5,
+  musicNodes: [],
+};
+
+// ============ STORAGE ============
+function getRecords() {
+  return JSON.parse(localStorage.getItem('brush_records') || '[]');
+}
+function saveRecord(date) {
+  const records = getRecords();
+  if (!records.includes(date)) {
+    records.push(date);
+    localStorage.setItem('brush_records', JSON.stringify(records));
+  }
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getStreak() {
+  const records = getRecords().sort();
+  if (records.length === 0) return 0;
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let checkDate = new Date(today);
+  // If today not checked, start from yesterday
+  if (!records.includes(todayStr())) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  while (true) {
+    const ds = `${checkDate.getFullYear()}-${String(checkDate.getMonth()+1).padStart(2,'0')}-${String(checkDate.getDate()).padStart(2,'0')}`;
+    if (records.includes(ds)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// ============ AUDIO ============
+function initAudio() {
+  if (!state.audioCtx) {
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (state.audioCtx.state === 'suspended') {
+    state.audioCtx.resume();
+  }
+}
+
+function playBeep(freq, duration, type = 'sine') {
+  if (!state.audioCtx) return;
+  const osc = state.audioCtx.createOscillator();
+  const gain = state.audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(state.volume * 0.3, state.audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(state.audioCtx.destination);
+  osc.start();
+  osc.stop(state.audioCtx.currentTime + duration);
+}
+
+function playZoneSwitch() {
+  playBeep(880, 0.15, 'sine');
+  setTimeout(() => playBeep(1100, 0.15, 'sine'), 100);
+  setTimeout(() => playBeep(1320, 0.2, 'sine'), 200);
+}
+
+function playComplete() {
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((n, i) => {
+    setTimeout(() => playBeep(n, 0.3, 'sine'), i * 150);
+  });
+}
+
+function playTick() {
+  if (!state.audioCtx) return;
+  const osc = state.audioCtx.createOscillator();
+  const gain = state.audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 1000;
+  gain.gain.setValueAtTime(state.volume * 0.05, state.audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, state.audioCtx.currentTime + 0.05);
+  osc.connect(gain);
+  gain.connect(state.audioCtx.destination);
+  osc.start();
+  osc.stop(state.audioCtx.currentTime + 0.05);
+}
+
+// ============ DRUM & MUSIC ENGINE ============
+function createNoiseBuffer(duration) {
+  const sr = state.audioCtx.sampleRate;
+  const buf = state.audioCtx.createBuffer(1, sr * duration, sr);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function playDrum(type, time, vol) {
+  const ctx = state.audioCtx;
+  const v = vol * state.volume;
+  if (type === 'kick') {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, time);
+    osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
+    g.gain.setValueAtTime(v * 0.6, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(time); osc.stop(time + 0.25);
+  } else if (type === 'snare') {
+    // Noise burst
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(0.15);
+    const nf = ctx.createBiquadFilter();
+    nf.type = 'highpass'; nf.frequency.value = 1500;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(v * 0.35, time);
+    ng.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+    noise.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+    noise.start(time); noise.stop(time + 0.15);
+    // Body tone
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(200, time);
+    osc.frequency.exponentialRampToValueAtTime(120, time + 0.05);
+    g.gain.setValueAtTime(v * 0.3, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(time); osc.stop(time + 0.1);
+  } else if (type === 'hihat') {
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(0.06);
+    const f = ctx.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 7000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(v * 0.2, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    noise.connect(f); f.connect(g); g.connect(ctx.destination);
+    noise.start(time); noise.stop(time + 0.06);
+  } else if (type === 'openhat') {
+    const noise = ctx.createBufferSource();
+    noise.buffer = createNoiseBuffer(0.2);
+    const f = ctx.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 6000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(v * 0.2, time);
+    g.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+    noise.connect(f); f.connect(g); g.connect(ctx.destination);
+    noise.start(time); noise.stop(time + 0.2);
+  } else if (type === 'clap') {
+    for (let i = 0; i < 3; i++) {
+      const noise = ctx.createBufferSource();
+      noise.buffer = createNoiseBuffer(0.04);
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = 2500; f.Q.value = 3;
+      const g = ctx.createGain();
+      const t = time + i * 0.012;
+      g.gain.setValueAtTime(v * 0.25, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      noise.connect(f); f.connect(g); g.connect(ctx.destination);
+      noise.start(t); noise.stop(t + 0.1);
+    }
+  }
+}
+
+function playSynth(freq, time, dur, type, vol, detune) {
+  const ctx = state.audioCtx;
+  const v = vol * state.volume;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type || 'sawtooth';
+  osc.frequency.setValueAtTime(freq, time);
+  if (detune) osc.detune.value = detune;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(2000, time);
+  f.frequency.exponentialRampToValueAtTime(400, time + dur * 0.8);
+  f.Q.value = 5;
+  g.gain.setValueAtTime(v * 0.15, time);
+  g.gain.setValueAtTime(v * 0.15, time + dur * 0.6);
+  g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.95);
+  osc.connect(f); f.connect(g); g.connect(ctx.destination);
+  osc.start(time); osc.stop(time + dur);
+}
+
+function playBass(freq, time, dur, vol) {
+  const ctx = state.audioCtx;
+  const v = vol * state.volume;
+  const osc = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = 'sawtooth'; osc.frequency.value = freq;
+  osc2.type = 'square'; osc2.frequency.value = freq;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 600; f.Q.value = 8;
+  g.gain.setValueAtTime(v * 0.2, time);
+  g.gain.setValueAtTime(v * 0.2, time + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.95);
+  osc.connect(f); osc2.connect(f); f.connect(g); g.connect(ctx.destination);
+  osc.start(time); osc.stop(time + dur);
+  osc2.start(time); osc2.stop(time + dur);
+}
+
+// Background music using Web Audio API
+function startMusic() {
+  stopMusic();
+  if (state.musicType === 'none' || !state.audioCtx) return;
+
+  const bpm = state.musicType === 'hiphop' ? 90 : state.musicType === 'funk' ? 110 : 128;
+  const beatDur = 60 / bpm;
+  const barDur = beatDur * 4;
+
+  if (state.musicType === 'edm') {
+    // EDM: four-on-the-floor kick + offbeat hihats + synth riff + bass
+    function edmLoop() {
+      if (!state.running) return;
+      const t = state.audioCtx.currentTime + 0.05;
+      // 2 bars per loop
+      for (let bar = 0; bar < 2; bar++) {
+        const bt = t + bar * barDur;
+        for (let i = 0; i < 4; i++) {
+          playDrum('kick', bt + i * beatDur, 1);
+          playDrum('hihat', bt + i * beatDur + beatDur * 0.5, 0.7);
+        }
+        playDrum('clap', bt + beatDur, 0.9);
+        playDrum('clap', bt + beatDur * 3, 0.9);
+        // Synth riff
+        const riff = [330, 392, 440, 523, 440, 392, 330, 294];
+        riff.forEach((f, i) => {
+          playSynth(f, bt + i * beatDur * 0.5, beatDur * 0.45, 'sawtooth', 0.8, (i % 2) * 10);
+        });
+        // Bass
+        const bassNotes = [82, 82, 110, 98];
+        bassNotes.forEach((f, i) => {
+          playBass(f, bt + i * beatDur, beatDur * 0.9, 1);
+        });
+      }
+      state.melodyTimeout = setTimeout(edmLoop, barDur * 2 * 1000 - 50);
+    }
+    edmLoop();
+
+  } else if (state.musicType === 'funk') {
+    // Funk: syncopated drums + slap bass + wah synth
+    function funkLoop() {
+      if (!state.running) return;
+      const t = state.audioCtx.currentTime + 0.05;
+      for (let bar = 0; bar < 2; bar++) {
+        const bt = t + bar * barDur;
+        // Funky drum pattern
+        playDrum('kick', bt, 1);
+        playDrum('kick', bt + beatDur * 0.75, 0.7);
+        playDrum('kick', bt + beatDur * 2.5, 0.9);
+        playDrum('snare', bt + beatDur, 1);
+        playDrum('snare', bt + beatDur * 3, 1);
+        playDrum('openhat', bt + beatDur * 1.5, 0.6);
+        for (let i = 0; i < 8; i++) {
+          if (i !== 2 && i !== 6)
+            playDrum('hihat', bt + i * beatDur * 0.5, 0.5);
+        }
+        // Funky bass line
+        const bassPattern = [
+          {f: 98, t: 0, d: 0.2}, {f: 98, t: 0.3, d: 0.15},
+          {f: 131, t: 0.5, d: 0.2}, {f: 110, t: 0.75, d: 0.15},
+          {f: 82, t: 1, d: 0.3}, {f: 98, t: 1.5, d: 0.2},
+          {f: 131, t: 2, d: 0.15}, {f: 147, t: 2.25, d: 0.15},
+          {f: 131, t: 2.5, d: 0.2}, {f: 110, t: 3, d: 0.3},
+          {f: 98, t: 3.5, d: 0.25},
+        ];
+        bassPattern.forEach(n => {
+          playBass(n.f, bt + n.t * beatDur, n.d * beatDur * 2, 1);
+        });
+        // Wah chord stabs
+        const chordTimes = [0.5, 1.5, 2.5, 3.25];
+        chordTimes.forEach(ct => {
+          [330, 415, 494].forEach(f => {
+            playSynth(f, bt + ct * beatDur, beatDur * 0.3, 'sawtooth', 0.5, Math.random() * 10);
+          });
+        });
+      }
+      state.melodyTimeout = setTimeout(funkLoop, barDur * 2 * 1000 - 50);
+    }
+    funkLoop();
+
+  } else if (state.musicType === 'hiphop') {
+    // Hip-hop: boomy kicks + snappy snares + trap hihats + 808 bass
+    function hiphopLoop() {
+      if (!state.running) return;
+      const t = state.audioCtx.currentTime + 0.05;
+      for (let bar = 0; bar < 2; bar++) {
+        const bt = t + bar * barDur;
+        // Boom bap pattern
+        playDrum('kick', bt, 1.2);
+        playDrum('kick', bt + beatDur * 0.75, 0.6);
+        playDrum('kick', bt + beatDur * 2, 1);
+        playDrum('kick', bt + beatDur * 3.25, 0.7);
+        playDrum('snare', bt + beatDur, 1);
+        playDrum('snare', bt + beatDur * 3, 1);
+        // Trap hihat rolls
+        for (let i = 0; i < 16; i++) {
+          const ht = bt + i * beatDur * 0.25;
+          const isRoll = (i >= 4 && i <= 6) || (i >= 12 && i <= 14);
+          if (isRoll) {
+            playDrum('hihat', ht, 0.4);
+            playDrum('hihat', ht + beatDur * 0.125, 0.3);
+          } else {
+            playDrum('hihat', ht, 0.5);
+          }
+        }
+        playDrum('openhat', bt + beatDur * 1.75, 0.5);
+        // 808 bass slide
+        const ctx = state.audioCtx;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(55, bt);
+        osc.frequency.exponentialRampToValueAtTime(44, bt + barDur * 0.8);
+        const dist = ctx.createWaveShaperFunction ? null : null;
+        g.gain.setValueAtTime(state.volume * 0.35, bt);
+        g.gain.setValueAtTime(state.volume * 0.35, bt + barDur * 0.6);
+        g.gain.exponentialRampToValueAtTime(0.001, bt + barDur * 0.9);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(bt); osc.stop(bt + barDur);
+        // Melody hits
+        const melNotes = [
+          {f: 311, t: 0, d: 0.5}, {f: 370, t: 1, d: 0.3},
+          {f: 415, t: 2, d: 0.5}, {f: 370, t: 3, d: 0.3},
+        ];
+        melNotes.forEach(n => {
+          playSynth(n.f, bt + n.t * beatDur, n.d * beatDur, 'square', 0.4, 5);
+        });
+      }
+      state.melodyTimeout = setTimeout(hiphopLoop, barDur * 2 * 1000 - 50);
+    }
+    hiphopLoop();
+
+  } else if (state.musicType === 'arcade') {
+    // 8-bit chiptune: square wave melody + pulse bass + simple drums
+    function arcadeLoop() {
+      if (!state.running) return;
+      const t = state.audioCtx.currentTime + 0.05;
+      const ctx = state.audioCtx;
+      for (let bar = 0; bar < 2; bar++) {
+        const bt = t + bar * barDur;
+        // Simple kick & snare
+        playDrum('kick', bt, 0.8);
+        playDrum('kick', bt + beatDur * 2, 0.8);
+        playDrum('snare', bt + beatDur, 0.7);
+        playDrum('snare', bt + beatDur * 3, 0.7);
+        for (let i = 0; i < 8; i++) {
+          playDrum('hihat', bt + i * beatDur * 0.5, 0.4);
+        }
+        // Chiptune melody (square wave, no filter)
+        const melodies = [
+          [523, 587, 659, 784, 659, 587, 523, 440],
+          [440, 523, 587, 659, 784, 659, 587, 523],
+        ];
+        const mel = melodies[bar % 2];
+        mel.forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.value = f;
+          const nt = bt + i * beatDur * 0.5;
+          g.gain.setValueAtTime(state.volume * 0.08, nt);
+          g.gain.setValueAtTime(state.volume * 0.08, nt + beatDur * 0.35);
+          g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.48);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(nt); osc.stop(nt + beatDur * 0.5);
+        });
+        // Arpeggio bass
+        const bassArp = [131, 165, 196, 165];
+        bassArp.forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.value = f;
+          const nt = bt + i * beatDur;
+          g.gain.setValueAtTime(state.volume * 0.1, nt);
+          g.gain.setValueAtTime(state.volume * 0.1, nt + beatDur * 0.7);
+          g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.95);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(nt); osc.stop(nt + beatDur);
+        });
+      }
+      state.melodyTimeout = setTimeout(arcadeLoop, barDur * 2 * 1000 - 50);
+    }
+    arcadeLoop();
+  }
+}
+
+function stopMusic() {
+  state.musicNodes.forEach(node => {
+    try { node.stop ? node.stop() : null; } catch(e) {}
+    try { node.disconnect(); } catch(e) {}
+  });
+  state.musicNodes = [];
+  if (state.melodyTimeout) {
+    clearTimeout(state.melodyTimeout);
+    state.melodyTimeout = null;
+  }
+}
+
+// ============ TIMER ============
+function formatTime(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function updateDisplay() {
+  document.getElementById('mainTimer').textContent = formatTime(state.totalTimeLeft);
+
+  for (let i = 0; i < 4; i++) {
+    const cell = document.getElementById(`zoneCell-${i}`);
+    const timeEl = document.getElementById(`zoneTime-${i}`);
+    const progressEl = document.getElementById(`zoneProgress-${i}`);
+    const zoneEl = document.getElementById(ZONE_IDS[i]);
+
+    cell.classList.remove('active', 'done');
+    zoneEl.setAttribute('fill', 'transparent');
+
+    if (i < state.currentZone) {
+      cell.classList.add('done');
+      timeEl.textContent = '0:00';
+      progressEl.style.width = '100%';
+      zoneEl.setAttribute('fill', 'rgba(102, 187, 106, 0.3)');
+    } else if (i === state.currentZone && state.running) {
+      cell.classList.add('active');
+      timeEl.textContent = formatTime(state.zoneTimeLeft);
+      progressEl.style.width = `${((ZONE_SECONDS - state.zoneTimeLeft) / ZONE_SECONDS) * 100}%`;
+      zoneEl.setAttribute('fill', 'rgba(79, 195, 247, 0.4)');
+    } else {
+      timeEl.textContent = formatTime(ZONE_SECONDS);
+      progressEl.style.width = '0%';
+    }
+  }
+
+  // Update label
+  if (state.running) {
+    document.getElementById('timerLabel').textContent = `正在刷：${ZONE_NAMES[state.currentZone]}区域`;
+  }
+}
+
+function startBrushing() {
+  initAudio();
+  state.running = true;
+  state.currentZone = 0;
+  state.zoneTimeLeft = ZONE_SECONDS;
+  state.totalTimeLeft = TOTAL_SECONDS;
+
+  document.getElementById('toothContainer').classList.add('brushing');
+  document.getElementById('controls').innerHTML = `
+    <button class="btn btn-stop" onclick="stopBrushing()">放弃</button>
+  `;
+  document.getElementById('completion').classList.remove('show');
+
+  startMusic();
+  updateDisplay();
+
+  state.interval = setInterval(() => {
+    state.zoneTimeLeft--;
+    state.totalTimeLeft--;
+
+    // Tick sound in last 5 seconds of each zone
+    if (state.zoneTimeLeft <= 5 && state.zoneTimeLeft > 0) {
+      playTick();
+    }
+
+    if (state.zoneTimeLeft <= 0) {
+      if (state.currentZone < 3) {
+        state.currentZone++;
+        state.zoneTimeLeft = ZONE_SECONDS;
+        playZoneSwitch();
+        // Vibrate if available
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      } else {
+        completeBrushing();
+        return;
+      }
+    }
+
+    updateDisplay();
+    updateToothFace();
+  }, 1000);
+}
+
+function stopBrushing() {
+  state.running = false;
+  clearInterval(state.interval);
+  stopMusic();
+  document.getElementById('toothContainer').classList.remove('brushing');
+  resetTimerUI();
+}
+
+function completeBrushing() {
+  state.running = false;
+  clearInterval(state.interval);
+  stopMusic();
+  playComplete();
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+
+  document.getElementById('toothContainer').classList.remove('brushing');
+
+  // Save record
+  saveRecord(todayStr());
+  const streak = getStreak();
+
+  // Show completion
+  document.getElementById('controls').style.display = 'none';
+  document.getElementById('zoneMap').style.display = 'none';
+  document.getElementById('mainTimer').style.display = 'none';
+  document.getElementById('timerLabel').style.display = 'none';
+  document.getElementById('toothContainer').style.display = 'none';
+  document.querySelector('.music-selector').style.display = 'none';
+  document.querySelector('.volume-control').style.display = 'none';
+
+  const comp = document.getElementById('completion');
+  comp.classList.add('show');
+  document.getElementById('streakDisplay').textContent = streak;
+
+  const msgs = [
+    '牙齿亮晶晶~',
+    '坚持就是胜利！',
+    '牙宝今天很开心！',
+    '口腔卫生达人！',
+    '完美的两分钟！',
+  ];
+  document.getElementById('completionMsg').textContent = msgs[Math.floor(Math.random() * msgs.length)];
+
+  updateCharacter();
+}
+
+function resetTimer() {
+  resetTimerUI();
+  document.getElementById('completion').classList.remove('show');
+}
+
+function resetTimerUI() {
+  state.currentZone = 0;
+  state.zoneTimeLeft = ZONE_SECONDS;
+  state.totalTimeLeft = TOTAL_SECONDS;
+
+  document.getElementById('controls').style.display = 'flex';
+  document.getElementById('controls').innerHTML = `<button class="btn btn-start" onclick="startBrushing()">开始刷牙</button>`;
+  document.getElementById('zoneMap').style.display = 'grid';
+  document.getElementById('mainTimer').style.display = 'block';
+  document.getElementById('timerLabel').style.display = 'block';
+  document.getElementById('timerLabel').textContent = '准备好了吗？';
+  document.getElementById('toothContainer').style.display = 'block';
+  document.querySelector('.music-selector').style.display = 'flex';
+  document.querySelector('.volume-control').style.display = 'flex';
+
+  // Reset zones
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(ZONE_IDS[i]).setAttribute('fill', 'transparent');
+  }
+
+  updateDisplay();
+  updateToothFace();
+}
+
+function updateToothFace() {
+  const progress = 1 - (state.totalTimeLeft / TOTAL_SECONDS);
+  const mouth = document.getElementById('mouth');
+
+  if (!state.running) {
+    // Neutral/happy based on streak
+    const streak = getStreak();
+    if (streak === 0) {
+      mouth.setAttribute('d', 'M88 108 L112 108'); // flat
+      document.getElementById('toothBody').setAttribute('fill', '#e8e8e0');
+    } else if (streak < 3) {
+      mouth.setAttribute('d', 'M88 105 Q100 114 112 105');
+      document.getElementById('toothBody').setAttribute('fill', '#f0f0ec');
+    } else {
+      mouth.setAttribute('d', 'M85 105 Q100 122 115 105');
+      document.getElementById('toothBody').setAttribute('fill', '#f5f5f5');
+    }
+  } else {
+    // During brushing: progressively happier
+    if (progress < 0.25) {
+      mouth.setAttribute('d', 'M90 105 Q100 112 110 105');
+    } else if (progress < 0.5) {
+      mouth.setAttribute('d', 'M88 105 Q100 116 112 105');
+    } else if (progress < 0.75) {
+      mouth.setAttribute('d', 'M86 105 Q100 120 114 105');
+    } else {
+      mouth.setAttribute('d', 'M85 103 Q100 124 115 103');
+    }
+  }
+}
+
+// ============ MUSIC SELECTOR ============
+document.querySelectorAll('.music-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.music-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.musicType = btn.dataset.music;
+    if (state.running) startMusic();
+  });
+});
+
+document.getElementById('volumeSlider').addEventListener('input', (e) => {
+  state.volume = e.target.value / 100;
+  // Update music volume live
+  state.musicNodes.forEach(node => {
+    if (node instanceof GainNode) {
+      node.gain.value = state.volume * 0.15;
+    }
+  });
+});
+
+// ============ CALENDAR ============
+let calYear, calMonth;
+{
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const records = getRecords();
+  const today = todayStr();
+  const title = `${calYear}年${calMonth + 1}月`;
+  document.getElementById('calTitle').textContent = title;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  // Headers
+  ['日', '一', '二', '三', '四', '五', '六'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-header';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  // Empty cells
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  // Day cells
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    el.className = 'cal-day';
+    if (records.includes(ds)) el.classList.add('checked');
+    if (ds === today) el.classList.add('today');
+    el.textContent = d;
+    grid.appendChild(el);
+  }
+
+  // Stats
+  const streak = getStreak();
+  const monthCount = records.filter(r => r.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)).length;
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statMonth').textContent = monthCount;
+  document.getElementById('statTotal').textContent = records.length;
+}
+
+// ============ CHARACTER ============
+const LEVELS = [
+  { min: 0,  name: '新手',     title: '刚刚起步',         color: 'rgba(255,255,255,0.1)', tooth: '#e8e8e0' },
+  { min: 3,  name: '入门',     title: '开始养成好习惯',     color: 'rgba(79,195,247,0.2)',  tooth: '#edede8' },
+  { min: 7,  name: '坚持者',   title: '一周不间断！',       color: 'rgba(102,187,106,0.2)', tooth: '#f0f0ec' },
+  { min: 14, name: '习惯养成', title: '两周打卡达人',       color: 'rgba(124,77,255,0.2)',  tooth: '#f5f5f0' },
+  { min: 30, name: '护牙达人', title: '一个月坚持不懈',     color: 'rgba(255,167,38,0.2)',  tooth: '#f8f8f5' },
+  { min: 60, name: '闪亮之星', title: '牙齿闪闪发光',       color: 'rgba(255,215,0,0.2)',   tooth: '#fafaf8' },
+  { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff' },
+];
+
+function updateCharacter() {
+  const total = getRecords().length;
+  const streak = getStreak();
+
+  // Find level
+  let level = LEVELS[0];
+  let levelIdx = 0;
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (total >= LEVELS[i].min) {
+      level = LEVELS[i];
+      levelIdx = i;
+      break;
+    }
+  }
+
+  // Names evolve
+  const names = ['小白牙', '亮白牙', '闪光牙', '钻石牙', '传说之牙'];
+  const nameIdx = Math.min(Math.floor(levelIdx / 1.5), names.length - 1);
+
+  document.getElementById('charName').textContent = names[nameIdx];
+  document.getElementById('charTitle').textContent = level.title;
+
+  const badge = document.getElementById('levelBadge');
+  badge.textContent = `Lv.${levelIdx + 1} ${level.name}`;
+  badge.style.background = level.color;
+
+  // Stats (0-100%)
+  const whiteness = Math.min(100, total * 3);
+  const health = Math.min(100, total * 2.5 + streak * 2);
+  const persist = Math.min(100, streak * 5);
+  const shine = Math.min(100, total * 1.5 + streak * 3);
+
+  document.getElementById('statWhiteness').style.width = whiteness + '%';
+  document.getElementById('statHealth').style.width = health + '%';
+  document.getElementById('statPersist').style.width = persist + '%';
+  document.getElementById('statShine').style.width = shine + '%';
+
+  // Tooth color
+  document.getElementById('gradStop1').setAttribute('stop-color', level.tooth);
+  document.getElementById('gradStop2').setAttribute('stop-color', level.tooth === '#ffffff' ? '#f5f5f5' : '#ddd');
+
+  // Face expression
+  const charMouth = document.getElementById('charMouth');
+  if (streak === 0 && total === 0) {
+    charMouth.setAttribute('d', 'M88 108 L112 108'); // flat
+    document.getElementById('charTip').textContent = '快去刷牙吧，牙宝在等你！';
+  } else if (streak === 0) {
+    charMouth.setAttribute('d', 'M88 112 Q100 102 112 112'); // sad
+    document.getElementById('charTip').textContent = '连续记录断了...快来重新开始吧！';
+  } else if (streak < 7) {
+    charMouth.setAttribute('d', 'M88 105 Q100 116 112 105');
+    document.getElementById('charTip').textContent = `已连续${streak}天！继续保持~`;
+  } else {
+    charMouth.setAttribute('d', 'M85 103 Q100 124 115 103');
+    document.getElementById('charTip').textContent = `太棒了！${streak}天连续打卡！牙宝超开心！`;
+  }
+}
+
+// ============ NAVIGATION ============
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b => {
+    if ((page === 'timer' && b.textContent === '刷牙') ||
+        (page === 'calendar' && b.textContent === '打卡') ||
+        (page === 'character' && b.textContent === '牙宝')) {
+      b.classList.add('active');
+    }
+  });
+
+  if (page === 'calendar') renderCalendar();
+  if (page === 'character') updateCharacter();
+}
+
+// ============ INIT ============
+updateToothFace();
+updateDisplay();
+</script>
+</body>
+</html>
