@@ -475,6 +475,7 @@ body {
     <button class="music-btn" data-music="funk">放克律动</button>
     <button class="music-btn" data-music="hiphop">嘻哈鼓点</button>
     <button class="music-btn" data-music="arcade">8-bit游戏</button>
+    <button class="music-btn" data-music="classical">古典乐</button>
     <button class="music-btn" data-music="none">静音</button>
   </div>
 
@@ -605,6 +606,7 @@ let state = {
   musicType: 'edm',
   volume: 0.5,
   musicNodes: [],
+  musicGain: null,
   musicLoopCount: 0,
   musicStartTime: 0,
 };
@@ -655,6 +657,20 @@ function initAudio() {
   if (state.audioCtx.state === 'suspended') {
     state.audioCtx.resume();
   }
+}
+
+// Master gain node for music - disconnect to instantly silence all music
+function createMusicBus() {
+  if (state.musicGain) {
+    try { state.musicGain.disconnect(); } catch(e) {}
+  }
+  state.musicGain = state.audioCtx.createGain();
+  state.musicGain.gain.value = 1;
+  state.musicGain.connect(state.audioCtx.destination);
+  return state.musicGain;
+}
+function getMusicDest() {
+  return state.musicGain || state.audioCtx.destination;
 }
 
 function playBeep(freq, duration, type = 'sine') {
@@ -718,7 +734,7 @@ function playDrum(type, time, vol) {
     osc.frequency.exponentialRampToValueAtTime(30, time + 0.12);
     g.gain.setValueAtTime(v * 0.6, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
-    osc.connect(g); g.connect(ctx.destination);
+    osc.connect(g); g.connect(getMusicDest());
     osc.start(time); osc.stop(time + 0.25);
   } else if (type === 'snare') {
     // Noise burst
@@ -729,7 +745,7 @@ function playDrum(type, time, vol) {
     const ng = ctx.createGain();
     ng.gain.setValueAtTime(v * 0.35, time);
     ng.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
-    noise.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+    noise.connect(nf); nf.connect(ng); ng.connect(getMusicDest());
     noise.start(time); noise.stop(time + 0.15);
     // Body tone
     const osc = ctx.createOscillator();
@@ -739,7 +755,7 @@ function playDrum(type, time, vol) {
     osc.frequency.exponentialRampToValueAtTime(120, time + 0.05);
     g.gain.setValueAtTime(v * 0.3, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-    osc.connect(g); g.connect(ctx.destination);
+    osc.connect(g); g.connect(getMusicDest());
     osc.start(time); osc.stop(time + 0.1);
   } else if (type === 'hihat') {
     const noise = ctx.createBufferSource();
@@ -749,7 +765,7 @@ function playDrum(type, time, vol) {
     const g = ctx.createGain();
     g.gain.setValueAtTime(v * 0.2, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-    noise.connect(f); f.connect(g); g.connect(ctx.destination);
+    noise.connect(f); f.connect(g); g.connect(getMusicDest());
     noise.start(time); noise.stop(time + 0.06);
   } else if (type === 'openhat') {
     const noise = ctx.createBufferSource();
@@ -759,7 +775,7 @@ function playDrum(type, time, vol) {
     const g = ctx.createGain();
     g.gain.setValueAtTime(v * 0.2, time);
     g.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
-    noise.connect(f); f.connect(g); g.connect(ctx.destination);
+    noise.connect(f); f.connect(g); g.connect(getMusicDest());
     noise.start(time); noise.stop(time + 0.2);
   } else if (type === 'clap') {
     for (let i = 0; i < 3; i++) {
@@ -771,7 +787,7 @@ function playDrum(type, time, vol) {
       const t = time + i * 0.012;
       g.gain.setValueAtTime(v * 0.25, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      noise.connect(f); f.connect(g); g.connect(ctx.destination);
+      noise.connect(f); f.connect(g); g.connect(getMusicDest());
       noise.start(t); noise.stop(t + 0.1);
     }
   }
@@ -793,7 +809,7 @@ function playSynth(freq, time, dur, type, vol, detune) {
   g.gain.setValueAtTime(v * 0.15, time);
   g.gain.setValueAtTime(v * 0.15, time + dur * 0.6);
   g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.95);
-  osc.connect(f); f.connect(g); g.connect(ctx.destination);
+  osc.connect(f); f.connect(g); g.connect(getMusicDest());
   osc.start(time); osc.stop(time + dur);
 }
 
@@ -810,7 +826,7 @@ function playBass(freq, time, dur, vol) {
   g.gain.setValueAtTime(v * 0.2, time);
   g.gain.setValueAtTime(v * 0.2, time + dur * 0.7);
   g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.95);
-  osc.connect(f); osc2.connect(f); f.connect(g); g.connect(ctx.destination);
+  osc.connect(f); osc2.connect(f); f.connect(g); g.connect(getMusicDest());
   osc.start(time); osc.stop(time + dur);
   osc2.start(time); osc2.stop(time + dur);
 }
@@ -819,6 +835,7 @@ function playBass(freq, time, dur, vol) {
 function startMusic() {
   stopMusic();
   if (state.musicType === 'none' || !state.audioCtx) return;
+  createMusicBus();
   state.musicLoopCount = 0;
   state.musicStartTime = state.audioCtx.currentTime;
 
@@ -1022,7 +1039,7 @@ function startMusic() {
         g.gain.setValueAtTime(state.volume * 0.35, bt);
         g.gain.setValueAtTime(state.volume * 0.35, bt + barDur * 0.6);
         g.gain.exponentialRampToValueAtTime(0.001, bt + barDur * 0.9);
-        osc.connect(g); g.connect(ctx.destination);
+        osc.connect(g); g.connect(getMusicDest());
         osc.start(bt); osc.stop(bt + barDur);
         // Rotating melody
         const mel = pick(melodies, bar);
@@ -1093,7 +1110,7 @@ function startMusic() {
           g.gain.setValueAtTime(vol, nt);
           g.gain.setValueAtTime(vol, nt + beatDur * 0.35);
           g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.48);
-          osc.connect(g); g.connect(ctx.destination);
+          osc.connect(g); g.connect(getMusicDest());
           osc.start(nt); osc.stop(nt + beatDur * 0.5);
         });
         // Rotating bass arpeggio
@@ -1105,7 +1122,7 @@ function startMusic() {
           g.gain.setValueAtTime(state.volume * 0.1, nt);
           g.gain.setValueAtTime(state.volume * 0.1, nt + beatDur * 0.7);
           g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.95);
-          osc.connect(g); g.connect(ctx.destination);
+          osc.connect(g); g.connect(getMusicDest());
           osc.start(nt); osc.stop(nt + beatDur);
         });
         // Extra harmony layer in peak
@@ -1116,7 +1133,7 @@ function startMusic() {
             g.gain.setValueAtTime(state.volume * 0.04, bt);
             g.gain.setValueAtTime(state.volume * 0.04, bt + barDur * 0.8);
             g.gain.exponentialRampToValueAtTime(0.001, bt + barDur * 0.95);
-            osc.connect(g); g.connect(ctx.destination);
+            osc.connect(g); g.connect(getMusicDest());
             osc.start(bt); osc.stop(bt + barDur);
           });
         }
@@ -1125,14 +1142,131 @@ function startMusic() {
       state.melodyTimeout = setTimeout(arcadeLoop, barDur * loopBars * 1000 - 50);
     }
     arcadeLoop();
+
+  } else if (state.musicType === 'classical') {
+    // Classical: piano-like tones, string pads, waltz/orchestral feel
+    const cbpm = 100;
+    const cbeatDur = 60 / cbpm;
+    const cbarDur = cbeatDur * 4;
+
+    // Multiple classical melodies (piano-like, using sine+triangle)
+    const cMelodies = [
+      // Melody A - flowing ascending
+      [{f:523,t:0,d:0.8},{f:587,t:0.5,d:0.4},{f:659,t:1,d:0.8},{f:698,t:1.5,d:0.4},
+       {f:784,t:2,d:0.8},{f:698,t:2.5,d:0.4},{f:659,t:3,d:0.6},{f:587,t:3.5,d:0.4}],
+      // Melody B - descending grace
+      [{f:784,t:0,d:0.6},{f:698,t:0.5,d:0.4},{f:659,t:1,d:0.6},{f:587,t:1.5,d:0.4},
+       {f:523,t:2,d:0.8},{f:494,t:2.5,d:0.4},{f:523,t:3,d:0.8},{f:587,t:3.5,d:0.3}],
+      // Melody C - playful
+      [{f:659,t:0,d:0.4},{f:784,t:0.5,d:0.4},{f:659,t:1,d:0.4},{f:523,t:1.5,d:0.6},
+       {f:587,t:2,d:0.4},{f:698,t:2.5,d:0.4},{f:587,t:3,d:0.4},{f:523,t:3.5,d:0.6}],
+      // Melody D - gentle arc
+      [{f:440,t:0,d:0.6},{f:523,t:0.75,d:0.5},{f:659,t:1.5,d:0.6},{f:784,t:2,d:0.8},
+       {f:659,t:2.75,d:0.4},{f:587,t:3.25,d:0.5},{f:523,t:3.75,d:0.3}],
+    ];
+    // Bass/chord patterns (arpeggiated chords)
+    const cChords = [
+      [[262,330,392],[247,311,370],[262,330,392],[294,349,440]], // C-B-C-Dm
+      [[262,330,392],[349,440,523],[294,370,440],[262,330,392]], // C-F-Dm-C
+      [[349,440,523],[330,415,494],[294,370,440],[262,330,392]], // F-E-Dm-C
+    ];
+
+    function playClassicalNote(freq, time, dur, vol) {
+      const ctx = state.audioCtx;
+      const v = vol * state.volume;
+      // Sine + triangle for piano-like tone
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc1.type = 'sine'; osc1.frequency.value = freq;
+      osc2.type = 'triangle'; osc2.frequency.value = freq * 2; // octave harmonic
+      const gOsc2 = ctx.createGain();
+      gOsc2.gain.value = 0.15; // subtle harmonic
+      // Attack-decay-sustain-release envelope
+      g.gain.setValueAtTime(0.001, time);
+      g.gain.exponentialRampToValueAtTime(v * 0.18, time + 0.02);
+      g.gain.setValueAtTime(v * 0.14, time + 0.06);
+      g.gain.setValueAtTime(v * 0.12, time + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.001, time + dur * 0.98);
+      osc1.connect(g);
+      osc2.connect(gOsc2); gOsc2.connect(g);
+      g.connect(getMusicDest());
+      osc1.start(time); osc1.stop(time + dur);
+      osc2.start(time); osc2.stop(time + dur);
+    }
+
+    function classicalLoop() {
+      if (!state.running) return;
+      const ctx = state.audioCtx;
+      const t = ctx.currentTime + 0.05;
+      const phase = getPhase();
+      const loopBars = phase >= 2 ? 4 : 2;
+
+      for (let bar = 0; bar < loopBars; bar++) {
+        const bt = t + bar * cbarDur;
+        // Melody
+        const mel = pick(cMelodies, bar);
+        mel.forEach(n => {
+          playClassicalNote(n.f, bt + n.t * cbeatDur, n.d * cbeatDur, 0.8 + phase * 0.05);
+        });
+        // Arpeggiated chord accompaniment
+        const chordSet = pick(cChords, bar);
+        const chord = chordSet[bar % chordSet.length];
+        // Arpeggio pattern
+        chord.forEach((f, ci) => {
+          const arpTime = bt + ci * cbeatDur * 0.33;
+          playClassicalNote(f * 0.5, arpTime, cbeatDur * 0.8, 0.5);
+        });
+        // Reverse arpeggio on beats 2-3
+        if (phase >= 1) {
+          [...chord].reverse().forEach((f, ci) => {
+            playClassicalNote(f * 0.5, bt + cbeatDur * 2 + ci * cbeatDur * 0.33, cbeatDur * 0.7, 0.4);
+          });
+        }
+        // String pad in build/peak phases
+        if (phase >= 1 && bar % 2 === 0) {
+          chord.forEach(f => {
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = f * 0.25; // low register
+            const padVol = state.volume * (phase >= 2 ? 0.06 : 0.035);
+            g.gain.setValueAtTime(0.001, bt);
+            g.gain.linearRampToValueAtTime(padVol, bt + cbarDur * 0.3);
+            g.gain.setValueAtTime(padVol, bt + cbarDur * 1.5);
+            g.gain.exponentialRampToValueAtTime(0.001, bt + cbarDur * 1.9);
+            osc.connect(g); g.connect(getMusicDest());
+            osc.start(bt); osc.stop(bt + cbarDur * 2);
+          });
+        }
+        // Light percussion (soft ticks) in peak phase
+        if (phase >= 2) {
+          for (let i = 0; i < 4; i++) {
+            const tickOsc = ctx.createOscillator();
+            const tickG = ctx.createGain();
+            tickOsc.type = 'sine';
+            tickOsc.frequency.value = 4000;
+            const tt = bt + i * cbeatDur;
+            tickG.gain.setValueAtTime(state.volume * 0.015, tt);
+            tickG.gain.exponentialRampToValueAtTime(0.001, tt + 0.03);
+            tickOsc.connect(tickG); tickG.connect(getMusicDest());
+            tickOsc.start(tt); tickOsc.stop(tt + 0.04);
+          }
+        }
+      }
+      state.musicLoopCount++;
+      state.melodyTimeout = setTimeout(classicalLoop, cbarDur * loopBars * 1000 - 50);
+    }
+    classicalLoop();
   }
 }
 
 function stopMusic() {
-  state.musicNodes.forEach(node => {
-    try { node.stop ? node.stop() : null; } catch(e) {}
-    try { node.disconnect(); } catch(e) {}
-  });
+  // Instantly silence all music by disconnecting the bus
+  if (state.musicGain) {
+    try { state.musicGain.disconnect(); } catch(e) {}
+    state.musicGain = null;
+  }
   state.musicNodes = [];
   if (state.melodyTimeout) {
     clearTimeout(state.melodyTimeout);
