@@ -471,11 +471,11 @@ body {
   </div>
 
   <div class="music-selector">
-    <button class="music-btn active" data-music="edm">电子节拍</button>
-    <button class="music-btn" data-music="funk">放克律动</button>
+    <button class="music-btn active" data-music="funk">放克律动</button>
     <button class="music-btn" data-music="hiphop">嘻哈鼓点</button>
-    <button class="music-btn" data-music="arcade">8-bit游戏</button>
     <button class="music-btn" data-music="classical">古典乐</button>
+    <button class="music-btn" data-music="jazz">爵士钢琴</button>
+    <button class="music-btn" data-music="lofi">Lo-fi</button>
     <button class="music-btn" data-music="none">静音</button>
   </div>
 
@@ -603,7 +603,7 @@ let state = {
   totalTimeLeft: TOTAL_SECONDS,
   interval: null,
   audioCtx: null,
-  musicType: 'edm',
+  musicType: 'funk',
   volume: 0.5,
   musicNodes: [],
   musicGain: null,
@@ -859,69 +859,7 @@ function startMusic() {
     return arr[(state.musicLoopCount + (offset || 0)) % arr.length];
   }
 
-  if (state.musicType === 'edm') {
-    // EDM with 4-bar loops, multiple riff/bass variations, progressive layering
-    const riffs = [
-      [330, 392, 440, 523, 440, 392, 330, 294],
-      [294, 330, 392, 440, 523, 587, 523, 440],
-      [440, 392, 523, 494, 392, 330, 440, 523],
-      [523, 494, 440, 392, 440, 494, 523, 587],
-    ];
-    const bassLines = [
-      [82, 82, 110, 98], [82, 98, 110, 82],
-      [110, 98, 82, 82], [98, 110, 82, 98],
-    ];
-
-    function edmLoop() {
-      if (!state.running) return;
-      const t = state.audioCtx.currentTime + 0.05;
-      const phase = getPhase();
-      const loopBars = phase >= 2 ? 4 : 2;
-
-      for (let bar = 0; bar < loopBars; bar++) {
-        const bt = t + bar * barDur;
-        const absBar = state.musicLoopCount * 2 + bar;
-        // Four-on-the-floor kick (always 4 per bar)
-        for (let i = 0; i < 4; i++) {
-          playDrum('kick', bt + i * beatDur, 1);
-          playDrum('hihat', bt + i * beatDur + beatDur * 0.5, 0.5 + phase * 0.1);
-        }
-        // Clap on 2 & 4
-        playDrum('clap', bt + beatDur, 0.9);
-        playDrum('clap', bt + beatDur * 3, 0.9);
-        // Extra percussion in later phases
-        if (phase >= 1) {
-          playDrum('openhat', bt + beatDur * 1.5, 0.4);
-          if (phase >= 2 && bar % 2 === 1) {
-            playDrum('snare', bt + beatDur * 3.5, 0.5);
-            playDrum('snare', bt + beatDur * 3.75, 0.6);
-          }
-        }
-        // Rotating synth riff
-        const riff = pick(riffs, bar);
-        const synthVol = phase === 0 ? 0.5 : phase === 1 ? 0.7 : 0.9;
-        riff.forEach((f, i) => {
-          const detune = Math.sin(absBar * 0.7 + i) * 15;
-          playSynth(f, bt + i * beatDur * 0.5, beatDur * 0.45, 'sawtooth', synthVol, detune);
-        });
-        // Rotating bass
-        const bass = pick(bassLines, bar);
-        bass.forEach((f, i) => {
-          playBass(f, bt + i * beatDur, beatDur * 0.9, 1);
-        });
-        // Add pad chord on phase 2+
-        if (phase >= 2 && bar % 2 === 0) {
-          [220, 277, 330].forEach(f => {
-            playSynth(f * 0.5, bt, barDur * 1.8, 'sine', 0.25, Math.random() * 5);
-          });
-        }
-      }
-      state.musicLoopCount++;
-      state.melodyTimeout = setTimeout(edmLoop, barDur * loopBars * 1000 - 50);
-    }
-    edmLoop();
-
-  } else if (state.musicType === 'funk') {
+  if (state.musicType === 'funk') {
     // Funk with rotating bass lines, chord progressions, drum fills
     const bassPatterns = [
       [{f:98,t:0,d:0.2},{f:98,t:0.3,d:0.15},{f:131,t:0.5,d:0.2},{f:110,t:0.75,d:0.15},{f:82,t:1,d:0.3},{f:98,t:1.5,d:0.2},{f:131,t:2,d:0.15},{f:147,t:2.25,d:0.15},{f:131,t:2.5,d:0.2},{f:110,t:3,d:0.3},{f:98,t:3.5,d:0.25}],
@@ -1059,90 +997,6 @@ function startMusic() {
     }
     hiphopLoop();
 
-  } else if (state.musicType === 'arcade') {
-    // 8-bit chiptune with many melody & bass variations
-    const melodies = [
-      [523, 587, 659, 784, 659, 587, 523, 440],
-      [440, 523, 587, 659, 784, 659, 587, 523],
-      [659, 587, 523, 440, 523, 587, 659, 784],
-      [784, 659, 587, 523, 587, 659, 784, 880],
-      [523, 659, 587, 784, 659, 523, 440, 523],
-      [440, 587, 523, 659, 784, 587, 523, 440],
-    ];
-    const bassArps = [
-      [131, 165, 196, 165], [165, 196, 220, 196],
-      [196, 165, 131, 165], [131, 196, 165, 220],
-    ];
-    const drumStyles = [
-      (bt) => { // Standard
-        playDrum('kick',bt,0.8); playDrum('kick',bt+beatDur*2,0.8);
-        playDrum('snare',bt+beatDur,0.7); playDrum('snare',bt+beatDur*3,0.7);
-      },
-      (bt) => { // Double kick
-        playDrum('kick',bt,0.8); playDrum('kick',bt+beatDur*0.5,0.5); playDrum('kick',bt+beatDur*2,0.8); playDrum('kick',bt+beatDur*2.5,0.5);
-        playDrum('snare',bt+beatDur,0.7); playDrum('snare',bt+beatDur*3,0.7);
-      },
-    ];
-
-    function arcadeLoop() {
-      if (!state.running) return;
-      const t = state.audioCtx.currentTime + 0.05;
-      const ctx = state.audioCtx;
-      const phase = getPhase();
-      const loopBars = phase >= 2 ? 4 : 2;
-
-      for (let bar = 0; bar < loopBars; bar++) {
-        const bt = t + bar * barDur;
-        // Rotating drums
-        pick(drumStyles, bar)(bt);
-        // Hihats with variation
-        const hhCount = phase >= 1 ? 8 : 4;
-        for (let i = 0; i < hhCount; i++) {
-          playDrum('hihat', bt + i * (barDur / hhCount), 0.35 + (i % 2) * 0.1);
-        }
-        // Rotating melody
-        const mel = pick(melodies, bar);
-        mel.forEach((f, i) => {
-          const osc = ctx.createOscillator(); const g = ctx.createGain();
-          osc.type = 'square'; osc.frequency.value = f;
-          const nt = bt + i * beatDur * 0.5;
-          const vol = state.volume * (0.07 + phase * 0.01);
-          g.gain.setValueAtTime(vol, nt);
-          g.gain.setValueAtTime(vol, nt + beatDur * 0.35);
-          g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.48);
-          osc.connect(g); g.connect(getMusicDest());
-          osc.start(nt); osc.stop(nt + beatDur * 0.5);
-        });
-        // Rotating bass arpeggio
-        const bass = pick(bassArps, bar);
-        bass.forEach((f, i) => {
-          const osc = ctx.createOscillator(); const g = ctx.createGain();
-          osc.type = 'square'; osc.frequency.value = f;
-          const nt = bt + i * beatDur;
-          g.gain.setValueAtTime(state.volume * 0.1, nt);
-          g.gain.setValueAtTime(state.volume * 0.1, nt + beatDur * 0.7);
-          g.gain.exponentialRampToValueAtTime(0.001, nt + beatDur * 0.95);
-          osc.connect(g); g.connect(getMusicDest());
-          osc.start(nt); osc.stop(nt + beatDur);
-        });
-        // Extra harmony layer in peak
-        if (phase >= 2 && bar % 2 === 0) {
-          [262, 330, 392].forEach((f, i) => {
-            const osc = ctx.createOscillator(); const g = ctx.createGain();
-            osc.type = 'triangle'; osc.frequency.value = f;
-            g.gain.setValueAtTime(state.volume * 0.04, bt);
-            g.gain.setValueAtTime(state.volume * 0.04, bt + barDur * 0.8);
-            g.gain.exponentialRampToValueAtTime(0.001, bt + barDur * 0.95);
-            osc.connect(g); g.connect(getMusicDest());
-            osc.start(bt); osc.stop(bt + barDur);
-          });
-        }
-      }
-      state.musicLoopCount++;
-      state.melodyTimeout = setTimeout(arcadeLoop, barDur * loopBars * 1000 - 50);
-    }
-    arcadeLoop();
-
   } else if (state.musicType === 'classical') {
     // Classical: piano-like tones, string pads, waltz/orchestral feel
     const cbpm = 100;
@@ -1258,6 +1112,246 @@ function startMusic() {
       state.melodyTimeout = setTimeout(classicalLoop, cbarDur * loopBars * 1000 - 50);
     }
     classicalLoop();
+
+  } else if (state.musicType === 'jazz') {
+    // === JAZZ PIANO ===
+    const jbpm = 120;
+    const jbeatDur = 60 / jbpm;
+    const jbarDur = jbeatDur * 4;
+    const dest = getMusicDest();
+    const ctx = state.audioCtx;
+
+    // Jazz scales and chords (Cmaj7, Dm7, Em7, Fmaj7, G7, Am7)
+    const jazzChords = [
+      [261.6, 329.6, 392, 493.9],   // Cmaj7
+      [293.7, 349.2, 440, 523.3],   // Dm7
+      [329.6, 392, 493.9, 587.3],   // Em7
+      [349.2, 440, 523.3, 659.3],   // Fmaj7
+      [392, 493.9, 587.3, 698.5],   // G7
+      [440, 523.3, 659.3, 784],     // Am7
+    ];
+    // Walking bass patterns (root notes)
+    const jazzBassLines = [
+      [130.8, 146.8, 164.8, 174.6],
+      [146.8, 164.8, 174.6, 196],
+      [174.6, 196, 220, 246.9],
+    ];
+    // Melody phrases
+    const jazzMelodies = [
+      [{f:523.3,t:0,d:0.8},{f:587.3,t:1,d:0.5},{f:659.3,t:1.5,d:1},{f:587.3,t:2.5,d:0.5},{f:523.3,t:3,d:1}],
+      [{f:659.3,t:0,d:0.5},{f:698.5,t:0.5,d:0.5},{f:784,t:1,d:1.5},{f:659.3,t:2.5,d:0.5},{f:587.3,t:3,d:0.8}],
+      [{f:784,t:0,d:1},{f:698.5,t:1.5,d:0.5},{f:659.3,t:2,d:0.5},{f:587.3,t:2.5,d:0.5},{f:523.3,t:3,d:1}],
+      [{f:440,t:0,d:0.5},{f:523.3,t:0.5,d:1},{f:587.3,t:2,d:0.5},{f:659.3,t:2.5,d:1.5}],
+    ];
+
+    function playJazzPiano(freq, time, dur, vol) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = freq;
+      const v = state.volume * vol * 0.12;
+      g.gain.setValueAtTime(v, time);
+      g.gain.exponentialRampToValueAtTime(v * 0.6, time + dur * 0.3);
+      g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + dur + 0.01);
+    }
+
+    function playBrushHit(time, vol) {
+      // Brushed cymbal sound using noise-like high freq
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = 6000 + Math.random() * 2000;
+      const v = state.volume * vol * 0.02;
+      g.gain.setValueAtTime(v, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + 0.1);
+    }
+
+    function jazzLoop() {
+      if (!state.running) return;
+      const t = ctx.currentTime + 0.05;
+      const phase = getPhase();
+      const loopBars = phase >= 2 ? 4 : 2;
+
+      for (let bar = 0; bar < loopBars; bar++) {
+        const bt = t + bar * jbarDur;
+        const chord = pick(jazzChords, bar);
+
+        // Comping: stab chords on off-beats
+        const compBeats = phase >= 1 ? [0.5, 1.5, 2.5, 3.5] : [1, 3];
+        compBeats.forEach(b => {
+          if (Math.random() > 0.3) {
+            chord.forEach(f => {
+              playJazzPiano(f, bt + b * jbeatDur, jbeatDur * 0.6, 0.5 + phase * 0.08);
+            });
+          }
+        });
+
+        // Walking bass
+        const bassLine = pick(jazzBassLines, bar);
+        for (let i = 0; i < 4; i++) {
+          const bo = ctx.createOscillator();
+          const bg = ctx.createGain();
+          bo.type = 'sine';
+          bo.frequency.value = bassLine[i % bassLine.length];
+          const bv = state.volume * 0.15;
+          bg.gain.setValueAtTime(bv, bt + i * jbeatDur);
+          bg.gain.exponentialRampToValueAtTime(0.001, bt + (i + 0.9) * jbeatDur);
+          bo.connect(bg); bg.connect(dest);
+          bo.start(bt + i * jbeatDur); bo.stop(bt + (i + 1) * jbeatDur);
+        }
+
+        // Brushed drums - ride pattern
+        for (let i = 0; i < 4; i++) {
+          playBrushHit(bt + i * jbeatDur, 0.6);
+          if (phase >= 1) playBrushHit(bt + (i + 0.5) * jbeatDur, 0.3);
+        }
+
+        // Melody in build/peak
+        if (phase >= 1 && bar % 2 === 0) {
+          const mel = pick(jazzMelodies, bar);
+          mel.forEach(n => {
+            playJazzPiano(n.f, bt + n.t * jbeatDur, n.d * jbeatDur, 0.8 + phase * 0.05);
+          });
+        }
+      }
+      state.musicLoopCount++;
+      state.melodyTimeout = setTimeout(jazzLoop, jbarDur * loopBars * 1000 - 50);
+    }
+    jazzLoop();
+
+  } else if (state.musicType === 'lofi') {
+    // === LO-FI BEATS ===
+    const lbpm = 75;
+    const lbeatDur = 60 / lbpm;
+    const lbarDur = lbeatDur * 4;
+    const dest = getMusicDest();
+    const ctx = state.audioCtx;
+
+    // Warm jazzy chords (minor 7ths, 9ths)
+    const lofiChords = [
+      [261.6, 311.1, 392, 466.2],   // Cm7
+      [220, 261.6, 329.6, 415.3],   // Am7
+      [233.1, 277.2, 349.2, 415.3], // Bbmaj7
+      [196, 233.1, 293.7, 349.2],   // Gm7
+    ];
+    // Mellow melodies
+    const lofiMelodies = [
+      [{f:523.3,t:0,d:1.5},{f:466.2,t:2,d:1},{f:392,t:3,d:1}],
+      [{f:392,t:0,d:1},{f:466.2,t:1.5,d:1},{f:523.3,t:3,d:1}],
+      [{f:349.2,t:0,d:2},{f:392,t:2.5,d:1.5}],
+      [{f:466.2,t:0,d:1},{f:440,t:1,d:0.5},{f:392,t:1.5,d:1},{f:349.2,t:3,d:1}],
+    ];
+
+    function playLofiTone(freq, time, dur, vol) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      // Warm sine with slight detuning for vinyl feel
+      o.type = 'sine';
+      o.frequency.value = freq * (1 + (Math.random() - 0.5) * 0.003);
+      const v = state.volume * vol * 0.1;
+      g.gain.setValueAtTime(0.001, time);
+      g.gain.linearRampToValueAtTime(v, time + 0.05);
+      g.gain.setValueAtTime(v, time + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.001, time + dur);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + dur + 0.01);
+    }
+
+    function playLofiKick(time) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(120, time);
+      o.frequency.exponentialRampToValueAtTime(50, time + 0.12);
+      const v = state.volume * 0.2;
+      g.gain.setValueAtTime(v, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + 0.3);
+    }
+
+    function playLofiSnare(time) {
+      // Soft snare with noise character
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.value = 3500 + Math.random() * 500;
+      const v = state.volume * 0.04;
+      g.gain.setValueAtTime(v, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + 0.12);
+    }
+
+    function playLofiHat(time, vol) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'square';
+      o.frequency.value = 8000 + Math.random() * 1000;
+      const v = state.volume * vol * 0.015;
+      g.gain.setValueAtTime(v, time);
+      g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+      o.connect(g); g.connect(dest);
+      o.start(time); o.stop(time + 0.05);
+    }
+
+    function lofiLoop() {
+      if (!state.running) return;
+      const t = ctx.currentTime + 0.05;
+      const phase = getPhase();
+      const loopBars = phase >= 2 ? 4 : 2;
+
+      for (let bar = 0; bar < loopBars; bar++) {
+        const bt = t + bar * lbarDur;
+        const chord = pick(lofiChords, bar);
+
+        // Warm chord pads
+        chord.forEach(f => {
+          playLofiTone(f * 0.5, bt, lbarDur * 0.95, 0.6 + phase * 0.05);
+        });
+
+        // Lazy drum pattern - kick on 1 and 3, snare on 2 and 4
+        playLofiKick(bt);
+        playLofiKick(bt + 2 * lbeatDur);
+        playLofiSnare(bt + lbeatDur);
+        if (phase >= 1) playLofiSnare(bt + 3 * lbeatDur);
+
+        // Hi-hats with swing
+        for (let i = 0; i < 4; i++) {
+          playLofiHat(bt + i * lbeatDur, 0.8);
+          if (phase >= 1 && Math.random() > 0.4) {
+            playLofiHat(bt + (i + 0.66) * lbeatDur, 0.4); // swing feel
+          }
+        }
+
+        // Melody - simple and dreamy
+        if (bar % 2 === 0 || phase >= 2) {
+          const mel = pick(lofiMelodies, bar);
+          mel.forEach(n => {
+            playLofiTone(n.f, bt + n.t * lbeatDur, n.d * lbeatDur, 0.7 + phase * 0.06);
+          });
+        }
+
+        // Sub bass following chord root
+        const sub = ctx.createOscillator();
+        const sg = ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.value = chord[0] * 0.25;
+        const sv = state.volume * 0.12;
+        sg.gain.setValueAtTime(sv, bt);
+        sg.gain.setValueAtTime(sv, bt + lbarDur * 0.7);
+        sg.gain.exponentialRampToValueAtTime(0.001, bt + lbarDur * 0.95);
+        sub.connect(sg); sg.connect(dest);
+        sub.start(bt); sub.stop(bt + lbarDur);
+      }
+      state.musicLoopCount++;
+      state.melodyTimeout = setTimeout(lofiLoop, lbarDur * loopBars * 1000 - 50);
+    }
+    lofiLoop();
   }
 }
 
