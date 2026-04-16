@@ -593,8 +593,9 @@ body {
 // ============ DATA ============
 const ZONE_NAMES = ['左上', '右上', '外侧', '左下', '右下', '内侧'];
 const ZONE_IDS = ['zone-ul', 'zone-ur', 'zone-out', 'zone-ll', 'zone-lr', 'zone-in'];
-const ZONE_SECONDS = 30;
-const TOTAL_SECONDS = ZONE_SECONDS * 6;
+const ZONE_SECONDS = 20;
+const ZONE_GAP = 2; // seconds between zones
+const TOTAL_SECONDS = ZONE_SECONDS * 6 + ZONE_GAP * 5;
 
 let state = {
   running: false,
@@ -1385,16 +1386,25 @@ function updateDisplay() {
     cell.classList.remove('active', 'done');
     zoneEl.setAttribute('fill', 'transparent');
 
-    if (i < state.currentZone) {
+    const isDone = i < state.currentZone || (i === state.currentZone && state.inGap);
+    const isActive = i === state.currentZone && state.running && !state.inGap;
+    const isNext = state.inGap && i === state.currentZone + 1;
+
+    if (isDone) {
       cell.classList.add('done');
       timeEl.textContent = '0:00';
       progressEl.style.width = '100%';
       zoneEl.setAttribute('fill', 'rgba(102, 187, 106, 0.3)');
-    } else if (i === state.currentZone && state.running) {
+    } else if (isActive) {
       cell.classList.add('active');
       timeEl.textContent = formatTime(state.zoneTimeLeft);
       progressEl.style.width = `${((ZONE_SECONDS - state.zoneTimeLeft) / ZONE_SECONDS) * 100}%`;
       zoneEl.setAttribute('fill', 'rgba(79, 195, 247, 0.4)');
+    } else if (isNext) {
+      cell.classList.add('active');
+      timeEl.textContent = formatTime(ZONE_SECONDS);
+      progressEl.style.width = '0%';
+      zoneEl.setAttribute('fill', 'rgba(255, 193, 7, 0.3)');
     } else {
       timeEl.textContent = formatTime(ZONE_SECONDS);
       progressEl.style.width = '0%';
@@ -1403,7 +1413,11 @@ function updateDisplay() {
 
   // Update label
   if (state.running) {
-    document.getElementById('timerLabel').textContent = `正在刷：${ZONE_NAMES[state.currentZone]}区域`;
+    if (state.inGap) {
+      document.getElementById('timerLabel').textContent = `准备换区 → ${ZONE_NAMES[state.currentZone + 1]}`;
+    } else {
+      document.getElementById('timerLabel').textContent = `正在刷：${ZONE_NAMES[state.currentZone]}区域`;
+    }
   }
 }
 
@@ -1423,9 +1437,25 @@ function startBrushing() {
   startMusic();
   updateDisplay();
 
+  state.inGap = false;
+  state.gapTimeLeft = 0;
   state.interval = setInterval(() => {
-    state.zoneTimeLeft--;
     state.totalTimeLeft--;
+
+    // During gap between zones
+    if (state.inGap) {
+      state.gapTimeLeft--;
+      if (state.gapTimeLeft <= 0) {
+        state.inGap = false;
+        state.currentZone++;
+        state.zoneTimeLeft = ZONE_SECONDS;
+      }
+      updateDisplay();
+      updateToothFace();
+      return;
+    }
+
+    state.zoneTimeLeft--;
 
     // Tick sound in last 5 seconds of each zone
     if (state.zoneTimeLeft <= 5 && state.zoneTimeLeft > 0) {
@@ -1434,11 +1464,11 @@ function startBrushing() {
 
     if (state.zoneTimeLeft <= 0) {
       if (state.currentZone < 5) {
-        state.currentZone++;
-        state.zoneTimeLeft = ZONE_SECONDS;
         playZoneSwitch();
-        // Vibrate if available
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        // Enter gap before next zone
+        state.inGap = true;
+        state.gapTimeLeft = ZONE_GAP;
       } else {
         completeBrushing();
         return;
