@@ -160,6 +160,11 @@ body {
   box-shadow: 0 4px 20px rgba(79, 195, 247, 0.3);
 }
 .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(79, 195, 247, 0.4); }
+.btn-pause {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid #ffc107;
+}
 .btn-stop {
   background: rgba(239, 83, 80, 0.15);
   color: var(--danger);
@@ -1429,7 +1434,9 @@ function startBrushing() {
   state.totalTimeLeft = TOTAL_SECONDS;
 
   document.getElementById('toothContainer').classList.add('brushing');
+  state.paused = false;
   document.getElementById('controls').innerHTML = `
+    <button class="btn btn-pause" onclick="togglePause()" id="pauseBtn">暂停</button>
     <button class="btn btn-stop" onclick="stopBrushing()">放弃</button>
   `;
   document.getElementById('completion').classList.remove('show');
@@ -1478,6 +1485,53 @@ function startBrushing() {
     updateDisplay();
     updateToothFace();
   }, 1000);
+}
+
+function togglePause() {
+  if (!state.running) return;
+  state.paused = !state.paused;
+  const btn = document.getElementById('pauseBtn');
+  if (state.paused) {
+    clearInterval(state.interval);
+    stopMusic();
+    btn.textContent = '继续';
+    document.getElementById('timerLabel').textContent = '已暂停';
+    document.getElementById('toothContainer').classList.remove('brushing');
+  } else {
+    startMusic();
+    document.getElementById('toothContainer').classList.add('brushing');
+    btn.textContent = '暂停';
+    // Restart the interval
+    state.interval = setInterval(() => {
+      state.totalTimeLeft--;
+      if (state.inGap) {
+        state.gapTimeLeft--;
+        if (state.gapTimeLeft <= 0) {
+          state.inGap = false;
+          state.currentZone++;
+          state.zoneTimeLeft = ZONE_SECONDS;
+        }
+        updateDisplay();
+        updateToothFace();
+        return;
+      }
+      state.zoneTimeLeft--;
+      if (state.zoneTimeLeft <= 5 && state.zoneTimeLeft > 0) playTick();
+      if (state.zoneTimeLeft <= 0) {
+        if (state.currentZone < 5) {
+          playZoneSwitch();
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          state.inGap = true;
+          state.gapTimeLeft = ZONE_GAP;
+        } else {
+          completeBrushing();
+          return;
+        }
+      }
+      updateDisplay();
+      updateToothFace();
+    }, 1000);
+  }
 }
 
 function stopBrushing() {
