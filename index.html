@@ -368,6 +368,54 @@ body {
   font-weight: 600;
   margin-top: 12px;
 }
+.level-roadmap {
+  margin-top: 20px;
+  padding: 0 8px;
+}
+.level-roadmap-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  position: relative;
+}
+.level-roadmap-item.current {
+  background: rgba(79, 195, 247, 0.12);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+}
+.level-roadmap-item.locked {
+  opacity: 0.45;
+}
+.level-roadmap-item.done {
+  opacity: 0.7;
+}
+.level-tooth-preview {
+  width: 28px;
+  height: 34px;
+  border-radius: 8px 8px 6px 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  flex-shrink: 0;
+}
+.level-info {
+  flex: 1;
+  min-width: 0;
+}
+.level-info-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.level-info-req {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.level-check {
+  font-size: 16px;
+  flex-shrink: 0;
+}
 
 /* Animations */
 @keyframes fadeIn {
@@ -592,6 +640,8 @@ body {
   <p style="font-size: 13px; color: var(--text-dim); margin-top: 16px;" id="charTip">
     每天刷牙，让牙宝变得更强大！
   </p>
+
+  <div class="level-roadmap" id="levelRoadmap"></div>
 </div>
 
 <script>
@@ -1786,6 +1836,35 @@ function updateCharacter() {
     charMouth.setAttribute('d', 'M85 103 Q100 124 115 103');
     document.getElementById('charTip').textContent = `太棒了！${streak}天连续打卡！牙宝超开心！`;
   }
+
+  // Level roadmap
+  const roadmap = document.getElementById('levelRoadmap');
+  const nextLevel = levelIdx < LEVELS.length - 1 ? LEVELS[levelIdx + 1] : null;
+  roadmap.innerHTML = '<div style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text);">等级路线</div>' +
+    LEVELS.map((lv, i) => {
+      const isDone = total >= lv.min;
+      const isCurrent = i === levelIdx;
+      const isLocked = !isDone && !isCurrent;
+      const cls = isCurrent ? 'current' : (isDone ? 'done' : 'locked');
+      const check = isDone && !isCurrent ? '✓' : (isCurrent ? '◆' : '○');
+      const daysNeeded = lv.min - total;
+      let reqText;
+      if (isDone && !isCurrent) {
+        reqText = '已达成';
+      } else if (isCurrent) {
+        reqText = nextLevel ? `还需 ${nextLevel.min - total} 天升级` : '最高等级！';
+      } else {
+        reqText = `需累计 ${lv.min} 天（还差 ${daysNeeded} 天）`;
+      }
+      return `<div class="level-roadmap-item ${cls}">
+        <div class="level-tooth-preview" style="background:${lv.tooth};"></div>
+        <div class="level-info">
+          <div class="level-info-name">Lv.${i+1} ${lv.name} · ${lv.title}</div>
+          <div class="level-info-req">${reqText}</div>
+        </div>
+        <div class="level-check">${check}</div>
+      </div>`;
+    }).join('');
 }
 
 // ============ NAVIGATION ============
