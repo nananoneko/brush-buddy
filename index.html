@@ -755,8 +755,10 @@ body {
       </defs>
       <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
             fill="url(#toothGrad)" stroke="#ccc" stroke-width="2" id="charToothPath"/>
-      <ellipse cx="85" cy="85" rx="5" ry="6" fill="#333" id="charEyeL"/>
-      <ellipse cx="115" cy="85" rx="5" ry="6" fill="#333" id="charEyeR"/>
+      <g id="charEyes">
+        <ellipse cx="85" cy="85" rx="5" ry="6" fill="#333"/>
+        <ellipse cx="115" cy="85" rx="5" ry="6" fill="#333"/>
+      </g>
       <path d="M88 105 Q100 118 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round" id="charMouth"/>
       <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushL"/>
       <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushR"/>
@@ -1997,18 +1999,64 @@ function renderCalendar() {
 }
 
 // ============ CHARACTER ============
+// Face definitions for each level
+const FACES = [
+  { // Lv.1 😐 面无表情
+    eyeL: '<ellipse cx="85" cy="85" rx="4" ry="4" fill="#333"/>',
+    eyeR: '<ellipse cx="115" cy="85" rx="4" ry="4" fill="#333"/>',
+    mouth: 'M88 108 L112 108',
+    blush: 0,
+  },
+  { // Lv.2 🙂 微笑
+    eyeL: '<ellipse cx="85" cy="85" rx="5" ry="5" fill="#333"/>',
+    eyeR: '<ellipse cx="115" cy="85" rx="5" ry="5" fill="#333"/>',
+    mouth: 'M90 105 Q100 112 110 105',
+    blush: 0.2,
+  },
+  { // Lv.3 😊 开心
+    eyeL: '<ellipse cx="85" cy="85" rx="5" ry="6" fill="#333"/>',
+    eyeR: '<ellipse cx="115" cy="85" rx="5" ry="6" fill="#333"/>',
+    mouth: 'M88 105 Q100 118 112 105',
+    blush: 0.35,
+  },
+  { // Lv.4 😄 大笑
+    eyeL: '<ellipse cx="85" cy="85" rx="6" ry="7" fill="#333"/>',
+    eyeR: '<ellipse cx="115" cy="85" rx="6" ry="7" fill="#333"/>',
+    mouth: 'M85 103 Q100 124 115 103',
+    blush: 0.45,
+  },
+  { // Lv.5 🤩 星星眼
+    eyeL: '<polygon points="85,78 87,83 92,84 88,88 89,93 85,90 81,93 82,88 78,84 83,83" fill="#FFD700"/>',
+    eyeR: '<polygon points="115,78 117,83 122,84 118,88 119,93 115,90 111,93 112,88 108,84 113,83" fill="#FFD700"/>',
+    mouth: 'M85 103 Q100 124 115 103',
+    blush: 0.5,
+  },
+  { // Lv.6 😎 墨镜
+    eyeL: '<rect x="72" y="78" width="24" height="14" rx="4" fill="#333"/><line x1="96" y1="85" x2="104" y2="85" stroke="#333" stroke-width="2"/>',
+    eyeR: '<rect x="104" y="78" width="24" height="14" rx="4" fill="#333"/>',
+    mouth: 'M90 108 Q100 114 110 108',
+    blush: 0.3,
+  },
+  { // Lv.7+ 😇 眯眼幸福
+    eyeL: '<path d="M79 85 Q85 79 91 85" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>',
+    eyeR: '<path d="M109 85 Q115 79 121 85" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>',
+    mouth: 'M85 103 Q100 122 115 103',
+    blush: 0.5,
+  },
+];
+
 const LEVELS = [
-  { min: 0,  name: '新手',     title: '刚刚起步',         color: 'rgba(255,255,255,0.1)', tooth: '#c8b878' },
-  { min: 3,  name: '入门',     title: '开始养成好习惯',     color: 'rgba(79,195,247,0.2)',  tooth: '#d4c88c' },
-  { min: 7,  name: '坚持者',   title: '一周不间断！',       color: 'rgba(102,187,106,0.2)', tooth: '#e0d8a8' },
-  { min: 14, name: '习惯养成', title: '两周打卡达人',       color: 'rgba(124,77,255,0.2)',  tooth: '#ece4c4' },
-  { min: 30, name: '护牙达人', title: '一个月坚持不懈',     color: 'rgba(255,167,38,0.2)',  tooth: '#f2efe0' },
-  { min: 60, name: '闪亮之星', title: '牙齿闪闪发光',       color: 'rgba(255,215,0,0.2)',   tooth: '#faf8f0' },
-  { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff', effect: 'none' },
-  { min: 180,name: '半年之约', title: '180天坚守承诺',       color: 'rgba(0,188,212,0.25)',  tooth: '#d4f1f9', effect: 'glow' },
-  { min: 365,name: '年度守护', title: '一整年的陪伴！',       color: 'rgba(33,150,243,0.25)', tooth: '#f8d7e8', effect: 'sparkle' },
-  { min: 500,name: '钻石恒久', title: '500天钻石意志',       color: 'rgba(156,39,176,0.25)', tooth: '#e0d4f5', effect: 'diamond' },
-  { min: 1000,name:'永恒传说', title: '千日传奇！',           color: 'rgba(255,64,129,0.3)',  tooth: '#ffffff', effect: 'rainbow' },
+  { min: 0,  name: '新手',     title: '刚刚起步',         color: 'rgba(255,255,255,0.1)', tooth: '#c8b878', faceIdx: 0 },
+  { min: 3,  name: '入门',     title: '开始养成好习惯',     color: 'rgba(79,195,247,0.2)',  tooth: '#d4c88c', faceIdx: 1 },
+  { min: 7,  name: '坚持者',   title: '一周不间断！',       color: 'rgba(102,187,106,0.2)', tooth: '#e0d8a8', faceIdx: 2 },
+  { min: 14, name: '习惯养成', title: '两周打卡达人',       color: 'rgba(124,77,255,0.2)',  tooth: '#ece4c4', faceIdx: 3 },
+  { min: 30, name: '护牙达人', title: '一个月坚持不懈',     color: 'rgba(255,167,38,0.2)',  tooth: '#f2efe0', faceIdx: 4 },
+  { min: 60, name: '闪亮之星', title: '牙齿闪闪发光',       color: 'rgba(255,215,0,0.2)',   tooth: '#faf8f0', faceIdx: 5 },
+  { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff', effect: 'none', faceIdx: 6 },
+  { min: 180,name: '半年之约', title: '180天坚守承诺',       color: 'rgba(0,188,212,0.25)',  tooth: '#d4f1f9', effect: 'glow', faceIdx: 6 },
+  { min: 365,name: '年度守护', title: '一整年的陪伴！',       color: 'rgba(33,150,243,0.25)', tooth: '#f8d7e8', effect: 'sparkle', faceIdx: 6 },
+  { min: 500,name: '钻石恒久', title: '500天钻石意志',       color: 'rgba(156,39,176,0.25)', tooth: '#e0d4f5', effect: 'diamond', faceIdx: 6 },
+  { min: 1000,name:'永恒传说', title: '千日传奇！',           color: 'rgba(255,64,129,0.3)',  tooth: '#ffffff', effect: 'rainbow', faceIdx: 6 },
 ];
 
 function updateCharacter() {
@@ -2094,26 +2142,42 @@ function updateCharacter() {
     wings.style.display = 'block';
   }
 
-  // Face expression
+  // Face expression — level-based with streak override
   const charMouth = document.getElementById('charMouth');
-  if (streak === 0 && total === 0) {
-    charMouth.setAttribute('d', 'M88 108 L112 108'); // flat
-    document.getElementById('charTip').textContent = '快去刷牙吧，牙宝在等你！';
-  } else if (streak === 0) {
-    charMouth.setAttribute('d', 'M88 112 Q100 102 112 112'); // sad
+  const charEyes = document.getElementById('charEyes');
+  const blushL = document.getElementById('charBlushL');
+  const blushR = document.getElementById('charBlushR');
+
+  if (streak === 0 && total > 0) {
+    // Sad face when streak broken (override level face)
+    charEyes.innerHTML = '<ellipse cx="85" cy="85" rx="5" ry="6" fill="#333"/><ellipse cx="115" cy="85" rx="5" ry="6" fill="#333"/>';
+    charMouth.setAttribute('d', 'M88 112 Q100 102 112 112');
+    blushL.setAttribute('opacity', '0');
+    blushR.setAttribute('opacity', '0');
     document.getElementById('charTip').textContent = '连续记录断了...快来重新开始吧！';
-  } else if (streak < 7) {
-    charMouth.setAttribute('d', 'M88 105 Q100 116 112 105');
-    document.getElementById('charTip').textContent = `已连续${streak}天！继续保持~`;
   } else {
-    charMouth.setAttribute('d', 'M85 103 Q100 124 115 103');
-    document.getElementById('charTip').textContent = `太棒了！${streak}天连续打卡！牙宝超开心！`;
+    const face = FACES[level.faceIdx !== undefined ? level.faceIdx : 0];
+    charEyes.innerHTML = face.eyeL + face.eyeR;
+    charMouth.setAttribute('d', face.mouth);
+    blushL.setAttribute('opacity', face.blush);
+    blushR.setAttribute('opacity', face.blush);
+    blushL.setAttribute('fill', `rgba(255,150,150,${face.blush})`);
+    blushR.setAttribute('fill', `rgba(255,150,150,${face.blush})`);
+
+    if (total === 0) {
+      document.getElementById('charTip').textContent = '快去刷牙吧，牙宝在等你！';
+    } else if (streak < 7) {
+      document.getElementById('charTip').textContent = `已连续${streak}天！继续保持~`;
+    } else {
+      document.getElementById('charTip').textContent = `太棒了！${streak}天连续打卡！牙宝超开心！`;
+    }
   }
 
 }
 
 function buildToothSVG(lv, size) {
   const s = size || 48;
+  const face = FACES[lv.faceIdx !== undefined ? lv.faceIdx : 0];
   const eff = lv.effect || 'none';
   const tooth2 = {'#d4f1f9':'#a8dce8','#f8d7e8':'#e8b0c8','#e0d4f5':'#c0a8e0','#ffffff':'#f0f0f0'}[lv.tooth] || '#ddd';
   let fill = `url(#lvGrad_${lv.min})`;
@@ -2152,11 +2216,11 @@ function buildToothSVG(lv, size) {
     ${extras}
     <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
           fill="${fill}" stroke="#ccc" stroke-width="2"/>
-    <ellipse cx="85" cy="85" rx="5" ry="5" fill="#333"/>
-    <ellipse cx="115" cy="85" rx="5" ry="5" fill="#333"/>
-    <path d="M88 105 Q100 116 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    <ellipse cx="75" cy="100" rx="7" ry="4" fill="rgba(255,150,150,0.3)"/>
-    <ellipse cx="125" cy="100" rx="7" ry="4" fill="rgba(255,150,150,0.3)"/>
+    ${face.eyeL}
+    ${face.eyeR}
+    <path d="${face.mouth}" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="75" cy="100" rx="7" ry="4" fill="rgba(255,150,150,${face.blush})"/>
+    <ellipse cx="125" cy="100" rx="7" ry="4" fill="rgba(255,150,150,${face.blush})"/>
   </svg>`;
 }
 
