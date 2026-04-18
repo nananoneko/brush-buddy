@@ -451,6 +451,27 @@ body {
 .sparkle-star {
   animation: sparkleBlink 2s ease-in-out infinite;
 }
+.halo-glow {
+  animation: haloPulse 3s ease-in-out infinite;
+}
+@keyframes haloPulse {
+  0%, 100% { opacity: 0.6; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-2px); }
+}
+.crown-shine {
+  animation: crownShine 4s ease-in-out infinite;
+}
+@keyframes crownShine {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(255,215,0,0.3)); }
+  50% { filter: drop-shadow(0 0 8px rgba(255,215,0,0.8)); }
+}
+.wings-float {
+  animation: wingsFloat 3s ease-in-out infinite;
+}
+@keyframes wingsFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
 @keyframes sparkleBlink {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
@@ -683,6 +704,25 @@ body {
       <path d="M88 105 Q100 118 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round" id="charMouth"/>
       <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushL"/>
       <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushR"/>
+      <!-- Halo (Lv.8+) -->
+      <g id="charHalo" style="display:none" class="halo-glow">
+        <ellipse cx="100" cy="22" rx="30" ry="8" fill="none" stroke="#FFD700" stroke-width="2.5" opacity="0.8"/>
+        <ellipse cx="100" cy="22" rx="30" ry="8" fill="none" stroke="#FFF8DC" stroke-width="1" opacity="0.5"/>
+      </g>
+      <!-- Crown (Lv.9+) -->
+      <g id="charCrown" style="display:none" class="crown-shine">
+        <polygon points="75,32 80,18 88,28 100,10 112,28 120,18 125,32" fill="#FFD700" stroke="#DAA520" stroke-width="1"/>
+        <circle cx="88" cy="24" r="2.5" fill="#ff6b6b"/>
+        <circle cx="100" cy="16" r="3" fill="#4d96ff"/>
+        <circle cx="112" cy="24" r="2.5" fill="#6bcb77"/>
+      </g>
+      <!-- Wings (Lv.10+) -->
+      <g id="charWings" style="display:none" class="wings-float">
+        <path d="M52 100 Q30 70 25 90 Q20 110 40 105 Q50 100 55 105 Z" fill="rgba(224,212,245,0.7)" stroke="rgba(156,39,176,0.3)" stroke-width="1"/>
+        <path d="M48 105 Q28 85 22 100 Q18 115 38 112 Z" fill="rgba(224,212,245,0.4)" stroke="none"/>
+        <path d="M148 100 Q170 70 175 90 Q180 110 160 105 Q150 100 145 105 Z" fill="rgba(224,212,245,0.7)" stroke="rgba(156,39,176,0.3)" stroke-width="1"/>
+        <path d="M152 105 Q172 85 178 100 Q182 115 162 112 Z" fill="rgba(224,212,245,0.4)" stroke="none"/>
+      </g>
       <!-- Sparkle stars (hidden by default) -->
       <g id="charSparkles" style="display:none">
         <text x="145" y="45" font-size="18" fill="#FFD700" class="sparkle-star">✦</text>
@@ -1898,9 +1938,9 @@ const LEVELS = [
   { min: 30, name: '护牙达人', title: '一个月坚持不懈',     color: 'rgba(255,167,38,0.2)',  tooth: '#f2efe0' },
   { min: 60, name: '闪亮之星', title: '牙齿闪闪发光',       color: 'rgba(255,215,0,0.2)',   tooth: '#faf8f0' },
   { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff', effect: 'none' },
-  { min: 180,name: '半年之约', title: '180天坚守承诺',       color: 'rgba(0,188,212,0.25)',  tooth: '#ffffff', effect: 'glow' },
-  { min: 365,name: '年度守护', title: '一整年的陪伴！',       color: 'rgba(33,150,243,0.25)', tooth: '#ffffff', effect: 'sparkle' },
-  { min: 500,name: '钻石恒久', title: '500天钻石意志',       color: 'rgba(156,39,176,0.25)', tooth: '#ffffff', effect: 'diamond' },
+  { min: 180,name: '半年之约', title: '180天坚守承诺',       color: 'rgba(0,188,212,0.25)',  tooth: '#d4f1f9', effect: 'glow' },
+  { min: 365,name: '年度守护', title: '一整年的陪伴！',       color: 'rgba(33,150,243,0.25)', tooth: '#f8d7e8', effect: 'sparkle' },
+  { min: 500,name: '钻石恒久', title: '500天钻石意志',       color: 'rgba(156,39,176,0.25)', tooth: '#e0d4f5', effect: 'diamond' },
   { min: 1000,name:'永恒传说', title: '千日传奇！',           color: 'rgba(255,64,129,0.3)',  tooth: '#ffffff', effect: 'rainbow' },
 ];
 
@@ -1941,32 +1981,50 @@ function updateCharacter() {
   document.getElementById('statPersist').style.width = persist + '%';
   document.getElementById('statShine').style.width = shine + '%';
 
-  // Tooth color & effects
+  // Tooth color, effects & decorations
   const toothPath = document.getElementById('charToothPath');
   const toothSvg = document.getElementById('charTooth');
   const sparkles = document.getElementById('charSparkles');
+  const halo = document.getElementById('charHalo');
+  const crown = document.getElementById('charCrown');
+  const wings = document.getElementById('charWings');
   const eff = level.effect || 'none';
 
-  // Reset effects
+  // Reset all effects & decorations
   toothSvg.classList.remove('tooth-glow', 'tooth-diamond', 'tooth-rainbow');
   toothPath.setAttribute('fill', 'url(#toothGrad)');
   sparkles.style.display = 'none';
+  halo.style.display = 'none';
+  crown.style.display = 'none';
+  wings.style.display = 'none';
 
+  // Tooth color gradient
   document.getElementById('gradStop1').setAttribute('stop-color', level.tooth);
-  document.getElementById('gradStop2').setAttribute('stop-color', level.tooth === '#ffffff' ? '#f5f5f5' : '#ddd');
+  // Darker shade for gradient stop2
+  const tooth2Map = { '#d4f1f9':'#a8dce8', '#f8d7e8':'#e8b0c8', '#e0d4f5':'#c0a8e0', '#ffffff':'#f5f5f5' };
+  document.getElementById('gradStop2').setAttribute('stop-color', tooth2Map[level.tooth] || '#ddd');
 
   if (eff === 'glow') {
     toothSvg.classList.add('tooth-glow');
+    halo.style.display = 'block';
   } else if (eff === 'sparkle') {
     toothSvg.classList.add('tooth-glow');
     sparkles.style.display = 'block';
+    halo.style.display = 'block';
+    crown.style.display = 'block';
   } else if (eff === 'diamond') {
     toothSvg.classList.add('tooth-diamond');
     sparkles.style.display = 'block';
+    halo.style.display = 'block';
+    crown.style.display = 'block';
+    wings.style.display = 'block';
   } else if (eff === 'rainbow') {
     toothPath.setAttribute('fill', 'url(#rainbowGrad)');
     toothSvg.classList.add('tooth-rainbow');
     sparkles.style.display = 'block';
+    halo.style.display = 'block';
+    crown.style.display = 'block';
+    wings.style.display = 'block';
   }
 
   // Face expression
@@ -2004,7 +2062,7 @@ function updateCharacter() {
       } else {
         reqText = `需累计 ${lv.min} 天（还差 ${daysNeeded} 天）`;
       }
-      const effectLabels = { glow: '✨ 发光', sparkle: '⭐ 闪烁', diamond: '💎 钻石光', rainbow: '🌈 彩虹' };
+      const effectLabels = { glow: '✨ 光环', sparkle: '👑 皇冠', diamond: '💎 翅膀', rainbow: '🌈 全套' };
       const effectTag = lv.effect && lv.effect !== 'none' ? `<span style="font-size:11px;margin-left:6px;padding:1px 6px;border-radius:8px;background:rgba(255,215,0,0.15);color:#ffd700;">${effectLabels[lv.effect]}</span>` : '';
       // Preview style for effects
       let previewStyle = `background:${lv.tooth};`;
