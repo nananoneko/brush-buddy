@@ -391,50 +391,106 @@ body {
   font-weight: 600;
   margin-top: 12px;
 }
-.level-roadmap {
-  margin-top: 20px;
-  padding: 0 8px;
+.btn-level-guide {
+  margin-top: 16px;
+  padding: 8px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
 }
-.level-roadmap-item {
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  position: relative;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
 }
-.level-roadmap-item.current {
-  background: rgba(79, 195, 247, 0.12);
-  border: 1px solid rgba(79, 195, 247, 0.3);
+.modal-content {
+  background: var(--card);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-.level-roadmap-item.locked {
-  opacity: 0.45;
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.level-roadmap-item.done {
-  opacity: 0.7;
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
 }
-.level-tooth-preview {
-  width: 28px;
-  height: 34px;
-  border-radius: 8px 8px 6px 6px;
-  border: 1px solid rgba(255,255,255,0.15);
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.modal-body {
+  overflow-y: auto;
+  padding: 12px 16px 20px;
+}
+.level-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid transparent;
+}
+.level-card.current {
+  background: rgba(79,195,247,0.1);
+  border-color: rgba(79,195,247,0.3);
+}
+.level-card.locked {
+  opacity: 0.4;
+}
+.level-card-preview {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.level-info {
+.level-card-info {
   flex: 1;
   min-width: 0;
 }
-.level-info-name {
+.level-card-name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
+  margin-bottom: 2px;
 }
-.level-info-req {
-  font-size: 11px;
+.level-card-title {
+  font-size: 12px;
   color: var(--text-dim);
-  margin-top: 2px;
 }
+.level-card-req {
+  font-size: 11px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.level-card-req.done { background: rgba(102,187,106,0.15); color: #66bb6a; }
+.level-card-req.current { background: rgba(79,195,247,0.15); color: var(--accent); }
+.level-card-req.locked { background: rgba(255,255,255,0.05); color: var(--text-dim); }
 .level-check {
   font-size: 16px;
   flex-shrink: 0;
@@ -767,7 +823,18 @@ body {
     每天刷牙，让牙宝变得更强大！
   </p>
 
-  <div class="level-roadmap" id="levelRoadmap"></div>
+  <button class="btn-level-guide" onclick="showLevelGuide()">等级说明</button>
+</div>
+
+<!-- Level Guide Modal -->
+<div class="modal-overlay" id="levelModal" style="display:none" onclick="if(event.target===this)closeLevelGuide()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>等级路线</h3>
+      <button class="modal-close" onclick="closeLevelGuide()">✕</button>
+    </div>
+    <div class="modal-body" id="levelGuideBody"></div>
+  </div>
 </div>
 
 <script>
@@ -2043,42 +2110,93 @@ function updateCharacter() {
     document.getElementById('charTip').textContent = `太棒了！${streak}天连续打卡！牙宝超开心！`;
   }
 
-  // Level roadmap
-  const roadmap = document.getElementById('levelRoadmap');
+}
+
+function buildToothSVG(lv, size) {
+  const s = size || 48;
+  const eff = lv.effect || 'none';
+  const tooth2 = {'#d4f1f9':'#a8dce8','#f8d7e8':'#e8b0c8','#e0d4f5':'#c0a8e0','#ffffff':'#f0f0f0'}[lv.tooth] || '#ddd';
+  let fill = `url(#lvGrad_${lv.min})`;
+  let extras = '';
+  let defs = `<linearGradient id="lvGrad_${lv.min}" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="${lv.tooth}"/><stop offset="100%" stop-color="${tooth2}"/></linearGradient>`;
+
+  if (eff === 'rainbow') {
+    fill = `url(#lvRainbow_${lv.min})`;
+    defs += `<linearGradient id="lvRainbow_${lv.min}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6b6b"/><stop offset="25%" stop-color="#ffd93d"/>
+      <stop offset="50%" stop-color="#6bcb77"/><stop offset="75%" stop-color="#4d96ff"/>
+      <stop offset="100%" stop-color="#9b59b6"/></linearGradient>`;
+  }
+  // Halo
+  if (eff === 'glow' || eff === 'sparkle' || eff === 'diamond' || eff === 'rainbow') {
+    extras += `<ellipse cx="100" cy="22" rx="30" ry="8" fill="none" stroke="#FFD700" stroke-width="2.5" opacity="0.7"/>`;
+  }
+  // Crown
+  if (eff === 'sparkle' || eff === 'diamond' || eff === 'rainbow') {
+    extras += `<polygon points="75,32 80,18 88,28 100,10 112,28 120,18 125,32" fill="#FFD700" stroke="#DAA520" stroke-width="1"/>
+      <circle cx="88" cy="24" r="2" fill="#ff6b6b"/><circle cx="100" cy="16" r="2.5" fill="#4d96ff"/><circle cx="112" cy="24" r="2" fill="#6bcb77"/>`;
+  }
+  // Wings
+  if (eff === 'diamond' || eff === 'rainbow') {
+    extras += `<path d="M52 100 Q30 70 25 90 Q20 110 40 105 Q50 100 55 105 Z" fill="rgba(224,212,245,0.7)" stroke="rgba(156,39,176,0.3)" stroke-width="1"/>
+      <path d="M148 100 Q170 70 175 90 Q180 110 160 105 Q150 100 145 105 Z" fill="rgba(224,212,245,0.7)" stroke="rgba(156,39,176,0.3)" stroke-width="1"/>`;
+  }
+  // Sparkles
+  if (eff === 'sparkle' || eff === 'diamond' || eff === 'rainbow') {
+    extras += `<text x="145" y="50" font-size="16" fill="#FFD700">✦</text><text x="48" y="55" font-size="12" fill="#FFD700">✦</text>`;
+  }
+
+  return `<svg width="${s}" height="${Math.round(s*1.2)}" viewBox="0 0 200 240">
+    <defs>${defs}</defs>
+    ${extras}
+    <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
+          fill="${fill}" stroke="#ccc" stroke-width="2"/>
+    <ellipse cx="85" cy="85" rx="5" ry="5" fill="#333"/>
+    <ellipse cx="115" cy="85" rx="5" ry="5" fill="#333"/>
+    <path d="M88 105 Q100 116 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="75" cy="100" rx="7" ry="4" fill="rgba(255,150,150,0.3)"/>
+    <ellipse cx="125" cy="100" rx="7" ry="4" fill="rgba(255,150,150,0.3)"/>
+  </svg>`;
+}
+
+function showLevelGuide() {
+  const total = getRecords().length;
+  const levelIdx = LEVELS.reduce((idx, lv, i) => total >= lv.min ? i : idx, 0);
   const nextLevel = levelIdx < LEVELS.length - 1 ? LEVELS[levelIdx + 1] : null;
-  roadmap.innerHTML = '<div style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--text);">等级路线</div>' +
-    LEVELS.map((lv, i) => {
-      const isDone = total >= lv.min;
-      const isCurrent = i === levelIdx;
-      const isLocked = !isDone && !isCurrent;
-      const cls = isCurrent ? 'current' : (isDone ? 'done' : 'locked');
-      const check = isDone && !isCurrent ? '✓' : (isCurrent ? '◆' : '○');
-      const daysNeeded = lv.min - total;
-      let reqText;
-      if (isDone && !isCurrent) {
-        reqText = '已达成';
-      } else if (isCurrent) {
-        reqText = nextLevel ? `还需 ${nextLevel.min - total} 天升级` : '最高等级！';
-      } else {
-        reqText = `需累计 ${lv.min} 天（还差 ${daysNeeded} 天）`;
-      }
-      const effectLabels = { glow: '✨ 光环', sparkle: '👑 皇冠', diamond: '💎 翅膀', rainbow: '🌈 全套' };
-      const effectTag = lv.effect && lv.effect !== 'none' ? `<span style="font-size:11px;margin-left:6px;padding:1px 6px;border-radius:8px;background:rgba(255,215,0,0.15);color:#ffd700;">${effectLabels[lv.effect]}</span>` : '';
-      // Preview style for effects
-      let previewStyle = `background:${lv.tooth};`;
-      if (lv.effect === 'glow') previewStyle += 'box-shadow:0 0 8px rgba(255,255,255,0.6);';
-      if (lv.effect === 'sparkle') previewStyle += 'box-shadow:0 0 10px rgba(255,215,0,0.5);';
-      if (lv.effect === 'diamond') previewStyle += 'box-shadow:0 0 10px rgba(156,39,176,0.5);';
-      if (lv.effect === 'rainbow') previewStyle = 'background:linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#9b59b6);box-shadow:0 0 10px rgba(255,100,200,0.4);';
-      return `<div class="level-roadmap-item ${cls}">
-        <div class="level-tooth-preview" style="${previewStyle}"></div>
-        <div class="level-info">
-          <div class="level-info-name">Lv.${i+1} ${lv.name}${effectTag}</div>
-          <div class="level-info-req">${reqText}</div>
-        </div>
-        <div class="level-check">${check}</div>
-      </div>`;
-    }).join('');
+  const effectLabels = { glow: '✨ 光环', sparkle: '👑 皇冠', diamond: '💎 翅膀', rainbow: '🌈 全套装备' };
+
+  const body = document.getElementById('levelGuideBody');
+  body.innerHTML = LEVELS.map((lv, i) => {
+    const isDone = total >= lv.min && i !== levelIdx;
+    const isCurrent = i === levelIdx;
+    const cls = isCurrent ? 'current' : (isDone ? '' : (i > levelIdx ? 'locked' : ''));
+    const daysNeeded = lv.min - total;
+    let reqText, reqCls;
+    if (isDone) {
+      reqText = '✓ 已达成'; reqCls = 'done';
+    } else if (isCurrent) {
+      reqText = nextLevel ? `还需 ${nextLevel.min - total} 天升级` : '最高等级！'; reqCls = 'current';
+    } else {
+      reqText = `累计 ${lv.min} 天（还差 ${daysNeeded} 天）`; reqCls = 'locked';
+    }
+    const effectTag = lv.effect && lv.effect !== 'none' ? `<span style="font-size:11px;margin-left:4px;padding:1px 6px;border-radius:8px;background:rgba(255,215,0,0.15);color:#ffd700;">${effectLabels[lv.effect]}</span>` : '';
+
+    return `<div class="level-card ${cls}">
+      <div class="level-card-preview">${buildToothSVG(lv, 48)}</div>
+      <div class="level-card-info">
+        <div class="level-card-name">Lv.${i+1} ${lv.name}${effectTag}</div>
+        <div class="level-card-title">${lv.title}</div>
+        <span class="level-card-req ${reqCls}">${reqText}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('levelModal').style.display = 'flex';
+}
+
+function closeLevelGuide() {
+  document.getElementById('levelModal').style.display = 'none';
 }
 
 // ============ NAVIGATION ============
