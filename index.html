@@ -178,6 +178,26 @@ body {
 }
 
 /* Music selector */
+.order-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.order-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.order-btn.active {
+  background: rgba(79,195,247,0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+}
 .music-selector {
   display: flex;
   justify-content: center;
@@ -570,6 +590,11 @@ body {
     <input type="range" id="volumeSlider" min="0" max="100" value="50">
   </div>
 
+  <div class="order-toggle">
+    <button class="order-btn active" id="orderSeq" onclick="setZoneOrder('seq')">顺序模式</button>
+    <button class="order-btn" id="orderRand" onclick="setZoneOrder('random')">随机模式</button>
+  </div>
+
   <div class="controls" id="controls">
     <button class="btn btn-start" id="btnStart" onclick="startBrushing()">开始刷牙</button>
   </div>
@@ -709,6 +734,15 @@ const ZONE_IDS = ['zone-ul', 'zone-ur', 'zone-out', 'zone-ll', 'zone-lr', 'zone-
 const ZONE_SECONDS = 20;
 const ZONE_GAP = 2; // seconds between zones
 const TOTAL_SECONDS = ZONE_SECONDS * 6 + ZONE_GAP * 5;
+
+let zoneOrder = 'seq'; // 'seq' or 'random'
+let zoneSequence = [0, 1, 2, 3, 4, 5]; // current zone order
+
+function setZoneOrder(mode) {
+  zoneOrder = mode;
+  document.getElementById('orderSeq').classList.toggle('active', mode === 'seq');
+  document.getElementById('orderRand').classList.toggle('active', mode === 'random');
+}
 
 let state = {
   running: false,
@@ -1490,14 +1524,17 @@ function formatTime(s) {
 function updateDisplay() {
   document.getElementById('mainTimer').textContent = formatTime(state.totalTimeLeft);
 
+  // Clear all zone highlights first
+  ZONE_IDS.forEach(id => document.getElementById(id).setAttribute('fill', 'transparent'));
+
   for (let i = 0; i < 6; i++) {
     const cell = document.getElementById(`zoneCell-${i}`);
     const timeEl = document.getElementById(`zoneTime-${i}`);
     const progressEl = document.getElementById(`zoneProgress-${i}`);
-    const zoneEl = document.getElementById(ZONE_IDS[i]);
+    const zIdx = zoneSequence[i]; // mapped zone index
+    const zoneEl = document.getElementById(ZONE_IDS[zIdx]);
 
     cell.classList.remove('active', 'done');
-    zoneEl.setAttribute('fill', 'transparent');
 
     const isDone = i < state.currentZone || (i === state.currentZone && state.inGap);
     const isActive = i === state.currentZone && state.running && !state.inGap;
@@ -1524,24 +1561,43 @@ function updateDisplay() {
     }
   }
 
-  // Update label
+  // Update label using zoneSequence
   if (state.running) {
-    if (state.inGap) {
-      document.getElementById('timerLabel').textContent = `准备换区 → ${ZONE_NAMES[state.currentZone + 1]}`;
+    const curZIdx = zoneSequence[state.currentZone];
+    if (state.inGap && state.currentZone + 1 < 6) {
+      const nextZIdx = zoneSequence[state.currentZone + 1];
+      document.getElementById('timerLabel').textContent = `准备换区 → ${ZONE_NAMES[nextZIdx]}`;
     } else {
-      document.getElementById('timerLabel').textContent = `正在刷：${ZONE_NAMES[state.currentZone]}区域`;
+      document.getElementById('timerLabel').textContent = `正在刷：${ZONE_NAMES[curZIdx]}区域`;
     }
   }
 }
 
 function startBrushing() {
   initAudio();
+  // Set zone sequence
+  if (zoneOrder === 'random') {
+    zoneSequence = [0, 1, 2, 3, 4, 5];
+    for (let i = zoneSequence.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [zoneSequence[i], zoneSequence[j]] = [zoneSequence[j], zoneSequence[i]];
+    }
+  } else {
+    zoneSequence = [0, 1, 2, 3, 4, 5];
+  }
   state.running = true;
   state.currentZone = 0;
   state.zoneTimeLeft = ZONE_SECONDS;
   state.totalTimeLeft = TOTAL_SECONDS;
 
+  // Update zone cell labels to match sequence
+  for (let i = 0; i < 6; i++) {
+    const zIdx = zoneSequence[i];
+    document.querySelector(`#zoneCell-${i} .zone-name`).textContent = ZONE_NAMES[zIdx];
+  }
+
   document.getElementById('toothContainer').classList.add('brushing');
+  document.querySelector('.order-toggle').style.display = 'none';
   state.paused = false;
   document.getElementById('controls').innerHTML = `
     <button class="btn btn-pause" onclick="togglePause()" id="pauseBtn">暂停</button>
@@ -1707,10 +1763,13 @@ function resetTimerUI() {
   document.getElementById('toothContainer').style.display = 'block';
   document.querySelector('.music-selector').style.display = 'flex';
   document.querySelector('.volume-control').style.display = 'flex';
+  document.querySelector('.order-toggle').style.display = 'flex';
 
-  // Reset zones
+  // Reset zones and labels
+  zoneSequence = [0, 1, 2, 3, 4, 5];
   for (let i = 0; i < 6; i++) {
     document.getElementById(ZONE_IDS[i]).setAttribute('fill', 'transparent');
+    document.querySelector(`#zoneCell-${i} .zone-name`).textContent = ZONE_NAMES[i];
   }
 
   updateDisplay();
