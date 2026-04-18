@@ -417,6 +417,39 @@ body {
   flex-shrink: 0;
 }
 
+/* Tooth effects */
+.tooth-glow {
+  animation: toothGlow 2s ease-in-out infinite;
+}
+@keyframes toothGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255,255,255,0.3)); }
+  50% { filter: drop-shadow(0 0 16px rgba(255,255,255,0.8)); }
+}
+.sparkle-star {
+  animation: sparkleBlink 2s ease-in-out infinite;
+}
+@keyframes sparkleBlink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+.tooth-diamond {
+  animation: diamondShine 3s ease-in-out infinite;
+}
+@keyframes diamondShine {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(156,39,176,0.3)) drop-shadow(0 0 8px rgba(255,255,255,0.2)); }
+  33% { filter: drop-shadow(0 0 12px rgba(156,39,176,0.6)) drop-shadow(0 0 20px rgba(255,255,255,0.5)); }
+  66% { filter: drop-shadow(0 0 8px rgba(79,195,247,0.5)) drop-shadow(0 0 16px rgba(255,255,255,0.4)); }
+}
+.tooth-rainbow {
+  animation: rainbowPulse 2s ease-in-out infinite;
+}
+@keyframes rainbowPulse {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255,107,107,0.4)); }
+  25% { filter: drop-shadow(0 0 12px rgba(255,217,61,0.5)); }
+  50% { filter: drop-shadow(0 0 14px rgba(107,203,119,0.5)); }
+  75% { filter: drop-shadow(0 0 12px rgba(77,150,255,0.5)); }
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
@@ -596,14 +629,39 @@ body {
           <stop offset="0%" id="gradStop1" stop-color="#f5f5f5"/>
           <stop offset="100%" id="gradStop2" stop-color="#e0e0e0"/>
         </linearGradient>
+        <linearGradient id="rainbowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#ff6b6b"><animate attributeName="stop-color" values="#ff6b6b;#ffd93d;#6bcb77;#4d96ff;#9b59b6;#ff6b6b" dur="4s" repeatCount="indefinite"/></stop>
+          <stop offset="50%" stop-color="#6bcb77"><animate attributeName="stop-color" values="#6bcb77;#4d96ff;#9b59b6;#ff6b6b;#ffd93d;#6bcb77" dur="4s" repeatCount="indefinite"/></stop>
+          <stop offset="100%" stop-color="#4d96ff"><animate attributeName="stop-color" values="#4d96ff;#9b59b6;#ff6b6b;#ffd93d;#6bcb77;#4d96ff" dur="4s" repeatCount="indefinite"/></stop>
+        </linearGradient>
+        <filter id="glowFilter">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="diamondFilter">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1.2" specularExponent="20" result="spec">
+            <fePointLight x="100" y="60" z="200">
+              <animate attributeName="x" values="60;140;60" dur="3s" repeatCount="indefinite"/>
+            </fePointLight>
+          </feSpecularLighting>
+          <feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="0.6" k4="0"/>
+        </filter>
       </defs>
       <path d="M60 80 Q60 30 100 30 Q140 30 140 80 L145 120 Q145 140 135 160 L125 200 Q120 220 110 220 Q105 215 100 200 Q95 215 90 220 Q80 220 75 200 L65 160 Q55 140 55 120 Z"
-            fill="url(#toothGrad)" stroke="#ccc" stroke-width="2"/>
+            fill="url(#toothGrad)" stroke="#ccc" stroke-width="2" id="charToothPath"/>
       <ellipse cx="85" cy="85" rx="5" ry="6" fill="#333" id="charEyeL"/>
       <ellipse cx="115" cy="85" rx="5" ry="6" fill="#333" id="charEyeR"/>
       <path d="M88 105 Q100 118 112 105" stroke="#333" stroke-width="2.5" fill="none" stroke-linecap="round" id="charMouth"/>
       <ellipse cx="75" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushL"/>
       <ellipse cx="125" cy="100" rx="8" ry="5" fill="rgba(255,150,150,0.3)" id="charBlushR"/>
+      <!-- Sparkle stars (hidden by default) -->
+      <g id="charSparkles" style="display:none">
+        <text x="145" y="45" font-size="18" fill="#FFD700" class="sparkle-star">✦</text>
+        <text x="45" y="50" font-size="14" fill="#FFD700" class="sparkle-star" style="animation-delay:0.5s">✦</text>
+        <text x="150" y="130" font-size="12" fill="#FFD700" class="sparkle-star" style="animation-delay:1s">✦</text>
+        <text x="40" y="140" font-size="16" fill="#FFD700" class="sparkle-star" style="animation-delay:1.5s">✦</text>
+      </g>
     </svg>
   </div>
   <div class="char-name" id="charName">小白牙</div>
@@ -1777,7 +1835,11 @@ const LEVELS = [
   { min: 14, name: '习惯养成', title: '两周打卡达人',       color: 'rgba(124,77,255,0.2)',  tooth: '#ece4c4' },
   { min: 30, name: '护牙达人', title: '一个月坚持不懈',     color: 'rgba(255,167,38,0.2)',  tooth: '#f2efe0' },
   { min: 60, name: '闪亮之星', title: '牙齿闪闪发光',       color: 'rgba(255,215,0,0.2)',   tooth: '#faf8f0' },
-  { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff' },
+  { min: 100,name: '传说',     title: '百日传奇！',         color: 'rgba(255,64,129,0.2)',  tooth: '#ffffff', effect: 'none' },
+  { min: 180,name: '半年之约', title: '180天坚守承诺',       color: 'rgba(0,188,212,0.25)',  tooth: '#ffffff', effect: 'glow' },
+  { min: 365,name: '年度守护', title: '一整年的陪伴！',       color: 'rgba(33,150,243,0.25)', tooth: '#ffffff', effect: 'sparkle' },
+  { min: 500,name: '钻石恒久', title: '500天钻石意志',       color: 'rgba(156,39,176,0.25)', tooth: '#ffffff', effect: 'diamond' },
+  { min: 1000,name:'永恒传说', title: '千日传奇！',           color: 'rgba(255,64,129,0.3)',  tooth: '#ffffff', effect: 'rainbow' },
 ];
 
 function updateCharacter() {
@@ -1796,7 +1858,7 @@ function updateCharacter() {
   }
 
   // Names evolve
-  const names = ['小白牙', '亮白牙', '闪光牙', '钻石牙', '传说之牙'];
+  const names = ['小白牙', '亮白牙', '闪光牙', '钻石牙', '传说之牙', '永恒之牙', '神话之牙'];
   const nameIdx = Math.min(Math.floor(levelIdx / 1.5), names.length - 1);
 
   document.getElementById('charName').textContent = names[nameIdx];
@@ -1817,9 +1879,33 @@ function updateCharacter() {
   document.getElementById('statPersist').style.width = persist + '%';
   document.getElementById('statShine').style.width = shine + '%';
 
-  // Tooth color
+  // Tooth color & effects
+  const toothPath = document.getElementById('charToothPath');
+  const toothSvg = document.getElementById('charTooth');
+  const sparkles = document.getElementById('charSparkles');
+  const eff = level.effect || 'none';
+
+  // Reset effects
+  toothSvg.classList.remove('tooth-glow', 'tooth-diamond', 'tooth-rainbow');
+  toothPath.setAttribute('fill', 'url(#toothGrad)');
+  sparkles.style.display = 'none';
+
   document.getElementById('gradStop1').setAttribute('stop-color', level.tooth);
   document.getElementById('gradStop2').setAttribute('stop-color', level.tooth === '#ffffff' ? '#f5f5f5' : '#ddd');
+
+  if (eff === 'glow') {
+    toothSvg.classList.add('tooth-glow');
+  } else if (eff === 'sparkle') {
+    toothSvg.classList.add('tooth-glow');
+    sparkles.style.display = 'block';
+  } else if (eff === 'diamond') {
+    toothSvg.classList.add('tooth-diamond');
+    sparkles.style.display = 'block';
+  } else if (eff === 'rainbow') {
+    toothPath.setAttribute('fill', 'url(#rainbowGrad)');
+    toothSvg.classList.add('tooth-rainbow');
+    sparkles.style.display = 'block';
+  }
 
   // Face expression
   const charMouth = document.getElementById('charMouth');
@@ -1856,10 +1942,18 @@ function updateCharacter() {
       } else {
         reqText = `需累计 ${lv.min} 天（还差 ${daysNeeded} 天）`;
       }
+      const effectLabels = { glow: '✨ 发光', sparkle: '⭐ 闪烁', diamond: '💎 钻石光', rainbow: '🌈 彩虹' };
+      const effectTag = lv.effect && lv.effect !== 'none' ? `<span style="font-size:11px;margin-left:6px;padding:1px 6px;border-radius:8px;background:rgba(255,215,0,0.15);color:#ffd700;">${effectLabels[lv.effect]}</span>` : '';
+      // Preview style for effects
+      let previewStyle = `background:${lv.tooth};`;
+      if (lv.effect === 'glow') previewStyle += 'box-shadow:0 0 8px rgba(255,255,255,0.6);';
+      if (lv.effect === 'sparkle') previewStyle += 'box-shadow:0 0 10px rgba(255,215,0,0.5);';
+      if (lv.effect === 'diamond') previewStyle += 'box-shadow:0 0 10px rgba(156,39,176,0.5);';
+      if (lv.effect === 'rainbow') previewStyle = 'background:linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#9b59b6);box-shadow:0 0 10px rgba(255,100,200,0.4);';
       return `<div class="level-roadmap-item ${cls}">
-        <div class="level-tooth-preview" style="background:${lv.tooth};"></div>
+        <div class="level-tooth-preview" style="${previewStyle}"></div>
         <div class="level-info">
-          <div class="level-info-name">Lv.${i+1} ${lv.name} · ${lv.title}</div>
+          <div class="level-info-name">Lv.${i+1} ${lv.name}${effectTag}</div>
           <div class="level-info-req">${reqText}</div>
         </div>
         <div class="level-check">${check}</div>
