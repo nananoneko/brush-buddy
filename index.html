@@ -1195,8 +1195,9 @@ const VOICE_CLIPS = {
 };
 
 function playVoiceClip(key) {
-  const src = VOICE_CLIPS[key];
-  if (!src) return;
+  const raw = VOICE_CLIPS[key];
+  if (!raw) return;
+  const src = raw.startsWith('data:') ? raw : 'data:audio/mp3;base64,' + raw;
   const audio = new Audio(src);
   audio.volume = Math.min(state.volume * 2, 1);
   audio.play().catch(() => {});
