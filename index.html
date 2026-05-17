@@ -2336,6 +2336,7 @@ function startBrushing() {
   state.inGap = false;
   state.gapTimeLeft = 0;
   state.interval = setInterval(() => {
+    if (state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
     state.totalTimeLeft--;
 
     // During gap between zones
@@ -2399,6 +2400,7 @@ function togglePause() {
     btn.textContent = '暂停';
     // Restart the interval
     state.interval = setInterval(() => {
+      if (state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
       state.totalTimeLeft--;
       if (state.inGap) {
         state.gapTimeLeft--;
